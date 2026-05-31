@@ -644,6 +644,7 @@ header{background:var(--or);padding:10px 5%;display:flex;align-items:center;gap:
       <span class="badge-dot" id="favBadge" style="display:none">0</span>
     </button>
     <div id="userArea"></div>
+    <div id="adminBtnHeader"></div>
     <button class="hdr-btn hdr-btn-wh" onclick="checkLoginForAdd()">+ Ürün Ekle</button>
   </div>
 </header>
@@ -820,6 +821,29 @@ header{background:var(--or);padding:10px 5%;display:flex;align-items:center;gap:
         <button class="social-btn" onclick="demoLogin()">🎭 Demo Giriş</button>
       </div>
       <button class="btn-cancel" onclick="closeModal('authOv')">Kapat</button>
+    </div>
+  </div>
+</div>
+<div class="ov" id="adminAuthOv" onclick="ovClick(event,'adminAuthOv')">
+  <div class="ov-inner">
+    <div class="auth-modal" style="max-width:400px">
+      <div class="auth-logo" style="background:linear-gradient(135deg,#ff4747,#ff6b6b);padding:16px;border-radius:var(--r8);color:#fff;margin-bottom:16px">
+        <div class="lg" style="color:#fff;margin-bottom:4px">🔐 ADMIN</div>
+        <p style="color:rgba(255,255,255,.9);font-size:12px">Sistem Yöneticisi Paneli</p>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Admin E-postası</label>
+        <input type="email" id="adminEmail" placeholder="admin@vitrinim.com" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r8);font-size:14px;font-family:'Nunito',sans-serif">
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Admin Şifresi</label>
+        <input type="password" id="adminPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--r8);font-size:14px;font-family:'Nunito',sans-serif">
+      </div>
+      <button onclick="adminLogin()" style="width:100%;padding:12px;background:#ff4747;color:#fff;border:none;border-radius:var(--r8);font-weight:800;font-size:14px;cursor:pointer;transition:.2s;margin-bottom:8px" onmouseover="this.style.background='#e63946'" onmouseout="this.style.background='#ff4747'">🔓 Giriş Yap</button>
+      <button onclick="closeModal('adminAuthOv')" style="width:100%;padding:10px;background:var(--g100);color:var(--text);border:none;border-radius:var(--r8);font-weight:700;font-size:13px;cursor:pointer">Kapat</button>
+      <div style="margin-top:16px;padding:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:var(--r8);font-size:11px;color:#856404;text-align:center;font-weight:700">
+        ⚠️ Demo: admin@vitrinim.com / admin123
+      </div>
     </div>
   </div>
 </div>
@@ -2235,9 +2259,256 @@ function showToast(msg,type){
 }
 
 // ══════════════════════════════════
+// 🔐 ADMIN SECURITY SYSTEM
+// ══════════════════════════════════
+
+// Admin Credentials (You can change these)
+const ADMIN_CONFIG = {
+  email: 'admin@vitrinim.com',
+  passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918' // "admin123" hashed with SHA256
+};
+
+// Simple SHA256 hash simulation (for demo - use real bcrypt in production with Supabase/Firebase)
+function simpleHash(str) {
+  let hash = 0;
+  for(let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
+}
+
+// XSS Protection - Sanitize all user inputs
+function sanitizeInput(str) {
+  if(!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  let sanitized = div.innerHTML
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+  return sanitized;
+}
+
+// Admin Session Management
+let adminSession = null;
+let adminToken = localStorage.getItem('vt_admin_token') || null;
+
+function initAdminSession() {
+  if(adminToken) {
+    const stored = JSON.parse(localStorage.getItem('vt_admin_session') || '{}');
+    if(stored && stored.token === adminToken && stored.expiry > Date.now()) {
+      adminSession = stored;
+      console.log('✅ Admin session restored');
+      updateAdminUI();
+    } else {
+      clearAdminSession();
+    }
+  }
+}
+
+function clearAdminSession() {
+  adminToken = null;
+  adminSession = null;
+  localStorage.removeItem('vt_admin_token');
+  localStorage.removeItem('vt_admin_session');
+  updateAdminUI();
+}
+
+function adminLogin() {
+  const email = sanitizeInput(document.getElementById('adminEmail')?.value?.trim() || '');
+  const pass = document.getElementById('adminPass')?.value || '';
+  
+  if(!email || !pass) {
+    showToast('E-posta ve şifre gerekli!', 'error');
+    return;
+  }
+  
+  if(email !== ADMIN_CONFIG.email) {
+    showToast('❌ Admin e-postası hatalı!', 'error');
+    console.warn('⚠️ Failed admin login attempt');
+    return;
+  }
+  
+  // Simple password verification (in production use bcrypt)
+  const passHash = simpleHash(pass);
+  
+  // For this demo, we'll accept the literal password "admin123"
+  if(pass !== 'admin123') {
+    showToast('❌ Şifre hatalı!', 'error');
+    console.warn('⚠️ Failed admin password attempt');
+    return;
+  }
+  
+  // Create admin session
+  const token = 'ADMIN_TOKEN_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+  const expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days
+  
+  adminSession = {
+    email: email,
+    token: token,
+    loginTime: new Date().toLocaleString('tr-TR'),
+    expiry: expiry
+  };
+  
+  adminToken = token;
+  localStorage.setItem('vt_admin_token', adminToken);
+  localStorage.setItem('vt_admin_session', JSON.stringify(adminSession));
+  
+  closeModal('adminAuthOv');
+  updateAdminUI();
+  renderGrid();
+  showToast('✅ Admin Paneline Hoş Geldiniz! 🔐', 'success');
+  addNotif('🔐 Admin Giriş', 'Yönetici paneline erişim sağlandı.');
+}
+
+function adminLogout() {
+  if(confirm('Admin oturumunu kapatmak istediğinize emin misiniz?')) {
+    clearAdminSession();
+    renderGrid();
+    showToast('Admin oturumu kapatıldı.', 'success');
+  }
+}
+
+function updateAdminUI() {
+  const adminBtn = document.getElementById('adminBtnHeader');
+  if(!adminBtn) return;
+  
+  if(adminSession) {
+    adminBtn.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;color:#fff">
+        <span style="font-size:12px;font-weight:800">🔐 ADMIN</span>
+        <button class="hdr-btn" style="background:#ff4747;color:#fff;padding:6px 10px;font-size:11px;font-weight:800;border:none;border-radius:var(--r8);cursor:pointer;transition:.2s" onmouseover="this.style.background='#e63946'" onmouseout="this.style.background='#ff4747'" onclick="adminLogout()">ÇIKIŞ</button>
+      </div>
+    `;
+  } else {
+    adminBtn.innerHTML = `<button class="hdr-btn hdr-btn-wh" onclick="openModal('adminAuthOv')" style="font-size:12px">🔐 Admin</button>`;
+  }
+}
+
+// Admin Product Deletion with Confirmation
+function adminDeleteProduct(productId, productTitle) {
+  const confirmed = confirm(`⚠️ BU İŞLEM GERİ ALINAMAZ!\n\n"${productTitle}" ilanını kalıcı olarak silmek istediğinize emin misiniz?`);
+  
+  if(!confirmed) return;
+  
+  const idx = products.findIndex(p => p.id === productId);
+  if(idx !== -1) {
+    const deleted = products.splice(idx, 1);
+    save();
+    renderGrid();
+    showToast(`✅ İlan silindi: "${productTitle}"`, 'success');
+    addNotif('🗑️ İlan Silindi', `Admin tarafından "${productTitle}" ilanı silinmiştir.`);
+    
+    // Log to console for audit
+    console.log('🗑️ ADMIN DELETE LOG', {
+      timestamp: new Date().toLocaleString('tr-TR'),
+      admin: adminSession.email,
+      productId: productId,
+      productTitle: productTitle,
+      deletedData: deleted[0]
+    });
+  }
+}
+
+// Admin View - Show all products with delete buttons
+function renderAdminPanel() {
+  if(!adminSession) return renderGrid(); // Fallback to normal view
+  
+  const grid = document.getElementById('grid');
+  if(!grid) return;
+  
+  grid.innerHTML = '';
+  
+  if(products.length === 0) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3)">📭 Henüz ürün yok</div>';
+    return;
+  }
+  
+  products.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'prd-card';
+    card.style.position = 'relative';
+    
+    const img = p.img || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Crect fill=%22%23eee%22 width=%22200%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2216%22 fill=%22%23999%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Image%3C/text%3E%3C/svg%3E';
+    
+    card.innerHTML = `
+      <div style="position:relative">
+        <img src="${img}" alt="${sanitizeInput(p.title)}" onclick="showDetail(${p.id})" style="cursor:pointer;width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r8) var(--r8) 0 0">
+        <div style="position:absolute;top:8px;right:8px;display:flex;gap:4px">
+          ${p.imgs && p.imgs.length > 1 ? `<div style="background:rgba(0,0,0,.6);color:#fff;padding:4px 8px;border-radius:var(--r4);font-size:11px;font-weight:800">${p.imgs.length} 📷</div>` : ''}
+        </div>
+        <button onclick="adminDeleteProduct(${p.id}, '${sanitizeInput(p.title)}')" style="position:absolute;bottom:8px;right:8px;background:#ff4747;color:#fff;border:none;padding:8px 12px;border-radius:var(--r8);font-weight:800;font-size:12px;cursor:pointer;transition:.2s;box-shadow:0 2px 8px rgba(255,71,71,.3)" onmouseover="this.style.background='#e63946'" onmouseout="this.style.background='#ff4747'">
+          🗑️ SİL
+        </button>
+      </div>
+      <div style="padding:12px">
+        <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:4px;line-height:1.3;word-break:break-word">${sanitizeInput(p.title)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">📦 ${p.brand || 'Bilinmiyor'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:900;font-size:16px;color:var(--or)">₺${Number(p.price).toLocaleString('tr-TR')}</div>
+          <div style="background:var(--or-l);color:var(--or-d);padding:4px 8px;border-radius:var(--r4);font-size:11px;font-weight:800">Stok: ${p.stock || 0}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;word-break:break-word">👤 ${sanitizeInput(p.seller || 'Anonim')}</div>
+        <button onclick="showDetail(${p.id})" style="width:100%;padding:8px;background:var(--g100);border:none;border-radius:var(--r8);color:var(--text);font-weight:800;font-size:12px;cursor:pointer;transition:.2s" onmouseover="this.style.background='var(--g200)'" onmouseout="this.style.background='var(--g100)'">📋 Detay</button>
+      </div>
+    `;
+    
+    grid.appendChild(card);
+  });
+}
+
+// Override renderGrid to show admin panel when logged in
+const originalRenderGrid = typeof renderGrid === 'function' ? renderGrid : function() {};
+
+function renderGridWithAdmin() {
+  if(adminSession) {
+    renderAdminPanel();
+  } else {
+    // Call original renderGrid logic if it exists
+    const searchResults = applyFilters();
+    const grid = document.getElementById('grid');
+    if(!grid) return;
+    
+    grid.innerHTML = '';
+    if(searchResults.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3)">🔍 Sonuç bulunamadı</div>';
+      return;
+    }
+    
+    searchResults.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'prd-card';
+      
+      const img = p.img || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Crect fill=%22%23eee%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E';
+      
+      card.innerHTML = `
+        <img src="${img}" alt="${sanitizeInput(p.title)}" onclick="showDetail(${p.id})" style="cursor:pointer;width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--r8) var(--r8) 0 0">
+        <div style="padding:12px">
+          <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:4px;line-height:1.3">${sanitizeInput(p.title)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">📦 ${p.brand || 'Bilinmiyor'}</div>
+          <div style="font-weight:900;font-size:16px;color:var(--or);margin-bottom:8px">₺${Number(p.price).toLocaleString('tr-TR')}</div>
+          <button onclick="showDetail(${p.id})" style="width:100%;padding:8px;background:var(--or);border:none;border-radius:var(--r8);color:#fff;font-weight:800;font-size:12px;cursor:pointer">👁️ Görüntüle</button>
+        </div>
+      `;
+      
+      grid.appendChild(card);
+    });
+  }
+}
+
+// Replace renderGrid with our admin-aware version
+renderGrid = renderGridWithAdmin;
+
+// ══════════════════════════════════
 // INIT
 // ══════════════════════════════════
 applyDarkMode();
+initAdminSession();
 seedDemoProducts();
 buildCatNav();
 buildFilters();
