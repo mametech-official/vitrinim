@@ -2099,7 +2099,7 @@ function setAuth(m){
   document.getElementById('tabR').classList.toggle('active',m==='reg');
   const f=document.getElementById('authFlds');
   if(m==='login'){
-    f.innerHTML=`<div class="fg"><label>E-posta</label><input type="email" id="aEmail" placeholder="ornek@email.com"></div><div class="fg"><label>Şifre</label><input type="password" id="aPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')document.getElementById('authSub').click()"></div>`;
+    f.innerHTML=`<div class="fg"><label>E-posta</label><input type="email" id="aEmail" placeholder="ornek@email.com"></div><div class="fg"><label>Şifre</label><input type="password" id="aPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')document.getElementById('authSub').click()"></div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" onclick="demoLogin()" style="flex:1;padding:10px;background:var(--or);color:#fff;border:none;border-radius:var(--r8);font-weight:800;font-size:13px;cursor:pointer;transition:.2s" onmouseover="this.style.background='var(--or-d)'" onmouseout="this.style.background='var(--or)'">🎭 Demo Giriş (Alışveriş)</button><button type="button" onclick="demoSellerLogin()" style="flex:1;padding:10px;background:#1976d2;color:#fff;border:none;border-radius:var(--r8);font-weight:800;font-size:13px;cursor:pointer;transition:.2s" onmouseover="this.style.background='#1565c0'" onmouseout="this.style.background='#1976d2'">🏪 Demo Giriş (Satıcı)</button></div>`;
     document.getElementById('authSub').onclick=loginUser;
   } else {
     f.innerHTML=`<div class="fg"><label>Ad Soyad</label><input type="text" id="aName" placeholder="Adınız Soyadınız"></div><div class="fg"><label>E-posta</label><input type="email" id="aEmail" placeholder="ornek@email.com"></div><div class="fg"><label>Şifre</label><input type="password" id="aPass" placeholder="En az 6 karakter" onkeydown="if(event.key==='Enter')document.getElementById('authSub').click()"></div>`;
@@ -2131,11 +2131,20 @@ function registerUser(){
   setAuth('login');
 }
 function demoLogin(){
-  const demoUser={name:'Demo Kullanıcı',email:'demo@vitrinim.com',pass:'demo123'};
+  const demoUser={name:'Demo Kullanıcı',email:'demo@vitrinim.com',pass:'demo123',isSeller:false};
   if(!users.find(x=>x.email===demoUser.email)) users.push(demoUser);
   currentUser=demoUser;save();updateUserUI();closeModal('authOv');
   addNotif('🎭 Demo giriş yapıldı','Tüm özellikleri deneyebilirsiniz!');
   showToast('Hoş geldin Demo! 🎭','success');
+  setTimeout(()=>{document.getElementById('chatBubble').style.display='flex';},500);
+  updateAlertBar();
+}
+function demoSellerLogin(){
+  const demoSeller={name:'Demo Satıcı',email:'seller@vitrinim.com',pass:'seller123',isSeller:true};
+  if(!users.find(x=>x.email===demoSeller.email)) users.push(demoSeller);
+  currentUser=demoSeller;save();updateUserUI();closeModal('authOv');
+  addNotif('🏪 Demo satıcı girişi','Satıcı panelini keşfet!');
+  showToast('Hoş geldin Satıcı! 🏪','success');
   setTimeout(()=>{document.getElementById('chatBubble').style.display='flex';},500);
   updateAlertBar();
 }
