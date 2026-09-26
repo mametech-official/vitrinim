@@ -1,0 +1,463 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vitrinim - Türkiye'nin İlan Platformu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="assets/css/main.css?v=10">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <span>Türkiye'nin en büyük ilan platformuna hoş geldiniz!</span>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo" onclick="goHome()">vitrinim</div>
+
+    <div class="search-box">
+      <div class="search-inner">
+        <select id="hdrCity" class="city-select" onchange="handleCityChange()">
+          <option value="">Tüm Türkiye</option>
+          <option value="İstanbul">İstanbul</option>
+          <option value="Ankara">Ankara</option>
+          <option value="İzmir">İzmir</option>
+          <option value="Bursa">Bursa</option>
+          <option value="Antalya">Antalya</option>
+          <option value="Adana">Adana</option>
+          <option value="Gaziantep">Gaziantep</option>
+          <option value="Konya">Konya</option>
+          <option value="Mersin">Mersin</option>
+          <option value="Kayseri">Kayseri</option>
+          <option value="Diyarbakır">Diyarbakır</option>
+          <option value="Samsun">Samsun</option>
+          <option value="Trabzon">Trabzon</option>
+          <option value="Eskişehir">Eskişehir</option>
+        </select>
+        <div class="search-divider"></div>
+        <input type="text" id="searchInput" placeholder="Ne arıyorsunuz?" oninput="handleSearch()" onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="search-btn" onclick="doSearch()">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+      <div class="search-drop" id="searchDrop"></div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-post-ad" onclick="openAddAd()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        İlan Ver
+      </button>
+      <div class="hdr-btn" onclick="currentUser ? openDash() : openModal('authOv')">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="hdrUserLabel">Giriş Yap</span>
+      </div>
+      <div class="hdr-btn" onclick="toggleFavs()">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        <span>Favoriler</span>
+        <span class="badge" id="favBadge" style="display:none">0</span>
+      </div>
+      <div class="hdr-btn" onclick="currentUser ? openMsgs() : openModal('authOv')">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span>Mesajlar</span>
+        <span class="badge" id="msgBadge" style="display:none">0</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- CATEGORY NAV -->
+<nav class="cat-nav">
+  <div class="cat-nav-inner">
+    <div class="cat-item active" onclick="setCategory('all')" data-cat="all">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Tümü
+    </div>
+    <div class="cat-item" onclick="setCategory('Vasıta')" data-cat="Vasıta">
+      <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 5v3h-4v1a2 2 0 01-4 0V16H1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Vasıta
+    </div>
+    <div class="cat-item" onclick="setCategory('Emlak')" data-cat="Emlak">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Emlak
+    </div>
+    <div class="cat-item" onclick="setCategory('Elektronik')" data-cat="Elektronik">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Elektronik
+    </div>
+    <div class="cat-item" onclick="setCategory('Giyim')" data-cat="Giyim">
+      <svg viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
+      Giyim
+    </div>
+    <div class="cat-item" onclick="setCategory('Ev & Yaşam')" data-cat="Ev & Yaşam">
+      <svg viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+      Ev & Yaşam
+    </div>
+    <div class="cat-item" onclick="setCategory('Spor')" data-cat="Spor">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20M12 2a14.5 14.5 0 010 20M2 12h20M2.5 9h19M2.5 15h19"/></svg>
+      Spor
+    </div>
+    <div class="cat-item" onclick="setCategory('Hayvanlar')" data-cat="Hayvanlar">
+      <svg viewBox="0 0 24 24"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.1 2.344-1.672M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.1-2.344-1.672M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75z"/><path d="M4.42 11.247A13.152 13.152 0 004 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0112 5c.78 0 1.5.108 2.161.306"/></svg>
+      Hayvanlar
+    </div>
+    <div class="cat-item" onclick="setCategory('İş Makineleri')" data-cat="İş Makineleri">
+      <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01M17 12h.01M7 12h.01"/></svg>
+      İş Makineleri
+    </div>
+    <div class="cat-item" onclick="setCategory('Diğer')" data-cat="Diğer">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      Diğer
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN PAGE -->
+<main class="site-main" id="siteMain">
+
+  <!-- HERO BANNER -->
+  <div class="hero-section" id="heroSection">
+    <div class="hero-text">
+      <h1>Türkiye'nin En Büyük<br>İlan Platformu</h1>
+      <p>Milyonlarca ilan, tek platformda. Al, sat, kirala.</p>
+      <button class="hero-btn" onclick="openAddAd()">Ücretsiz İlan Ver</button>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><span class="hs-num" id="hsTotalAds">0</span><span class="hs-lbl">Aktif İlan</span></div>
+      <div class="hero-stat"><span class="hs-num" id="hsTotalUsers">0</span><span class="hs-lbl">Üye</span></div>
+      <div class="hero-stat"><span class="hs-num">81</span><span class="hs-lbl">İl'de Hizmet</span></div>
+    </div>
+  </div>
+
+  <!-- CATEGORY BOXES (Sahibinden style) -->
+  <div class="cat-boxes-section" id="catBoxesSection">
+    <div class="section-title">Kategoriler</div>
+    <div class="cat-boxes">
+      <div class="cat-box" onclick="setCategory('Vasıta')">
+        <div class="cat-box-icon" style="background:#fff3e0;">🚗</div>
+        <div class="cat-box-name">Vasıta</div>
+        <div class="cat-box-count" id="cnt-Vasıta">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Emlak')">
+        <div class="cat-box-icon" style="background:#e8f5e9;">🏠</div>
+        <div class="cat-box-name">Emlak</div>
+        <div class="cat-box-count" id="cnt-Emlak">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Elektronik')">
+        <div class="cat-box-icon" style="background:#e3f2fd;">💻</div>
+        <div class="cat-box-name">Elektronik</div>
+        <div class="cat-box-count" id="cnt-Elektronik">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Giyim')">
+        <div class="cat-box-icon" style="background:#fce4ec;">👗</div>
+        <div class="cat-box-name">Giyim</div>
+        <div class="cat-box-count" id="cnt-Giyim">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Ev & Yaşam')">
+        <div class="cat-box-icon" style="background:#f3e5f5;">🛋️</div>
+        <div class="cat-box-name">Ev & Yaşam</div>
+        <div class="cat-box-count" id="cnt-Ev &amp; Yaşam">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Spor')">
+        <div class="cat-box-icon" style="background:#e0f7fa;">⚽</div>
+        <div class="cat-box-name">Spor</div>
+        <div class="cat-box-count" id="cnt-Spor">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Hayvanlar')">
+        <div class="cat-box-icon" style="background:#fff8e1;">🐾</div>
+        <div class="cat-box-name">Hayvanlar</div>
+        <div class="cat-box-count" id="cnt-Hayvanlar">0 ilan</div>
+      </div>
+      <div class="cat-box" onclick="setCategory('Diğer')">
+        <div class="cat-box-icon" style="background:#f1f8e9;">📦</div>
+        <div class="cat-box-name">Diğer</div>
+        <div class="cat-box-count" id="cnt-Diğer">0 ilan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADS LISTING SECTION -->
+  <div class="listing-section" id="listingSection">
+    <div class="listing-header">
+      <div class="listing-title" id="listingTitle">Son İlanlar</div>
+      <div class="listing-controls">
+        <select class="sort-select" onchange="handleSort(this.value)">
+          <option value="newest">En Yeni</option>
+          <option value="oldest">En Eski</option>
+          <option value="price_asc">Fiyat (Düşük→Yüksek)</option>
+          <option value="price_desc">Fiyat (Yüksek→Düşük)</option>
+        </select>
+        <div class="view-toggle">
+          <button class="vt-btn active" id="gridViewBtn" onclick="setView('grid')" title="Izgara">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="vt-btn" id="listViewBtn" onclick="setView('list')" title="Liste">
+            <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="listing-layout">
+      <!-- SIDEBAR FILTERS -->
+      <aside class="filters-sidebar" id="filtersSidebar">
+        <div class="filter-group">
+          <div class="fg-title">Şehir</div>
+          <select class="filter-select" onchange="filterState.city=this.value; applyFilters()">
+            <option value="">Tüm Türkiye</option>
+            <option value="İstanbul">İstanbul</option>
+            <option value="Ankara">Ankara</option>
+            <option value="İzmir">İzmir</option>
+            <option value="Bursa">Bursa</option>
+            <option value="Antalya">Antalya</option>
+            <option value="Adana">Adana</option>
+            <option value="Gaziantep">Gaziantep</option>
+            <option value="Konya">Konya</option>
+            <option value="Mersin">Mersin</option>
+            <option value="Kayseri">Kayseri</option>
+            <option value="Diyarbakır">Diyarbakır</option>
+            <option value="Samsun">Samsun</option>
+            <option value="Trabzon">Trabzon</option>
+            <option value="Eskişehir">Eskişehir</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <div class="fg-title">Fiyat Aralığı</div>
+          <div class="price-range">
+            <input type="number" id="minPrice" placeholder="Min TL" oninput="filterState.minPrice=this.value?+this.value:null; applyFilters()">
+            <span>-</span>
+            <input type="number" id="maxPrice" placeholder="Max TL" oninput="filterState.maxPrice=this.value?+this.value:null; applyFilters()">
+          </div>
+        </div>
+        <div class="filter-group">
+          <div class="fg-title">Durum</div>
+          <label class="filter-radio"><input type="radio" name="cond" value="" checked onchange="filterState.cond=this.value; applyFilters()"> Tümü</label>
+          <label class="filter-radio"><input type="radio" name="cond" value="sıfır" onchange="filterState.cond=this.value; applyFilters()"> Sıfır</label>
+          <label class="filter-radio"><input type="radio" name="cond" value="ikinci el" onchange="filterState.cond=this.value; applyFilters()"> İkinci El</label>
+        </div>
+        <button class="clear-filters-btn" onclick="clearFilters()">Filtreleri Temizle</button>
+      </aside>
+
+      <!-- AD GRID -->
+      <div class="ads-container" id="adsContainer">
+        <div class="ads-grid" id="adsGrid"></div>
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none">
+          <button class="load-more-btn" onclick="loadMore()">Daha Fazla İlan Gör</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="logo">vitrinim</div>
+      <p>Türkiye'nin güvenilir ilan platformu</p>
+    </div>
+    <div class="footer-links">
+      <div class="fl-col">
+        <h4>Kategoriler</h4>
+        <a onclick="setCategory('Vasıta')">Vasıta</a>
+        <a onclick="setCategory('Emlak')">Emlak</a>
+        <a onclick="setCategory('Elektronik')">Elektronik</a>
+        <a onclick="setCategory('Giyim')">Giyim</a>
+      </div>
+      <div class="fl-col">
+        <h4>Hızlı Linkler</h4>
+        <a onclick="openAddAd()">İlan Ver</a>
+        <a onclick="openModal('authOv')">Üye Ol</a>
+        <a href="#">Yardım</a>
+        <a href="#">İletişim</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2024 Vitrinim. Tüm hakları saklıdır.</span>
+  </div>
+</footer>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- AD DETAIL MODAL -->
+<div class="modal-overlay" id="adDetailOv" onclick="ovClick(event,'adDetailOv')">
+  <div class="modal-inner"><div class="ad-detail-modal" id="adDetailContent"></div></div>
+</div>
+
+<!-- ADD/EDIT AD MODAL -->
+<div class="modal-overlay" id="addAdOv" onclick="ovClick(event,'addAdOv')">
+  <div class="modal-inner">
+    <div class="form-modal">
+      <div class="form-modal-header">
+        <h2 id="addAdTitle">İlan Ver</h2>
+        <button class="modal-close-btn" onclick="closeModal('addAdOv')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="form-modal-body">
+        <!-- Photo Upload -->
+        <div class="photo-upload-area" id="photoUploadArea">
+          <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
+          <div class="photo-slots" id="photoSlots">
+            <div class="photo-slot add-slot" onclick="document.getElementById('photoInput').click()">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Fotoğraf Ekle</span>
+              <small>max 8 adet</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>İlan Başlığı <span class="req">*</span></label>
+          <input type="text" id="fTitle" placeholder="Örn: 2019 Honda Civic 1.6 VTEC Turbo" maxlength="100">
+          <small class="char-count" id="titleCount">0/100</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kategori <span class="req">*</span></label>
+            <select id="fCategory" onchange="updateSubcategories()">
+              <option value="">Seçiniz</option>
+              <option value="Vasıta">Vasıta</option>
+              <option value="Emlak">Emlak</option>
+              <option value="Elektronik">Elektronik</option>
+              <option value="Giyim">Giyim</option>
+              <option value="Ev & Yaşam">Ev & Yaşam</option>
+              <option value="Spor">Spor</option>
+              <option value="Hayvanlar">Hayvanlar</option>
+              <option value="İş Makineleri">İş Makineleri</option>
+              <option value="Diğer">Diğer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Alt Kategori</label>
+            <select id="fSubcategory">
+              <option value="">Önce kategori seçin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Şehir <span class="req">*</span></label>
+            <select id="fCity">
+              <option value="">Seçiniz</option>
+              <option value="İstanbul">İstanbul</option>
+              <option value="Ankara">Ankara</option>
+              <option value="İzmir">İzmir</option>
+              <option value="Bursa">Bursa</option>
+              <option value="Antalya">Antalya</option>
+              <option value="Adana">Adana</option>
+              <option value="Gaziantep">Gaziantep</option>
+              <option value="Konya">Konya</option>
+              <option value="Mersin">Mersin</option>
+              <option value="Kayseri">Kayseri</option>
+              <option value="Diyarbakır">Diyarbakır</option>
+              <option value="Samsun">Samsun</option>
+              <option value="Trabzon">Trabzon</option>
+              <option value="Eskişehir">Eskişehir</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>İlçe</label>
+            <input type="text" id="fDistrict" placeholder="Örn: Kadıköy">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fiyat (TL) <span class="req">*</span></label>
+            <input type="number" id="fPrice" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label>Durum</label>
+            <select id="fCondition">
+              <option value="ikinci el">İkinci El</option>
+              <option value="sıfır">Sıfır</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Açıklama</label>
+          <textarea id="fDesc" placeholder="İlanınızı detaylı açıklayın..." rows="5" maxlength="2000"></textarea>
+          <small class="char-count" id="descCount">0/2000</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>İletişim Telefonu <span class="req">*</span></label>
+            <input type="tel" id="fPhone" placeholder="05xx xxx xx xx">
+          </div>
+          <div class="form-group">
+            <label>WhatsApp (opsiyonel)</label>
+            <input type="tel" id="fWhatsapp" placeholder="905xx xxx xx xx">
+          </div>
+        </div>
+
+        <input type="hidden" id="fEditId">
+        <div class="form-actions">
+          <button class="btn-submit" onclick="saveAd()">İlanı Yayınla</button>
+          <button class="btn-cancel-form" onclick="closeModal('addAdOv')">İptal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authOv" onclick="ovClick(event,'authOv')">
+  <div class="modal-inner">
+    <div class="auth-modal">
+      <button class="modal-close-btn" onclick="closeModal('authOv')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="auth-logo">
+        <div class="auth-logo-text">vitrinim</div>
+        <p>Türkiye'nin ilan platformuna hoş geldiniz</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="setAuthTab('login')">Giriş Yap</button>
+        <button class="auth-tab" id="tabRegister" onclick="setAuthTab('register')">Üye Ol</button>
+      </div>
+      <div id="authForm"></div>
+
+    </div>
+  </div>
+</div>
+
+
+
+<!-- DASHBOARD MODAL -->
+<div class="modal-overlay" id="dashOv" onclick="ovClick(event,'dashOv')">
+  <div class="modal-inner modal-inner-full"><div class="dash-modal" id="dashContent"></div></div>
+</div>
+
+<!-- MESSAGES MODAL -->
+<div class="modal-overlay" id="msgsOv" onclick="ovClick(event,'msgsOv')">
+  <div class="modal-inner"><div class="msgs-modal" id="msgsContent"></div></div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareOv" onclick="ovClick(event,'shareOv')">
+  <div class="modal-inner"><div class="share-modal" id="shareContent"></div></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="assets/js/data.js?v=10"></script>
+<script src="assets/js/app.js?v=11"></script>
+
+</body>
+</html>
+
