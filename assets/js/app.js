@@ -22,9 +22,17 @@ let displayedCount = 12;
 const PAGE_SIZE = 12;
 
 
-const supabaseUrl = 'https://rxgywnzandkdpyiopnys.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3l3bnphbmRrZHB5aW9wbnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NDU1MTMsImV4cCI6MjEwNjAyMTUxM30.vfqAZjk0wZPh6LwHo6dLiKpHqVgte2RKH_6y2SSqbZk';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+let _supabase = null;
+
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = window.supabase.createClient(
+      'https://rxgywnzandkdpyiopnys.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3l3bnphbmRrZHB5aW9wbnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NDU1MTMsImV4cCI6MjEwNjAyMTUxM30.vfqAZjk0wZPh6LwHo6dLiKpHqVgte2RKH_6y2SSqbZk'
+    );
+  }
+  return _supabase;
+}
 
 function mapDbAd(dbAd) {
   return {
@@ -72,7 +80,7 @@ async function load() {
     messages = savedMsgs ? JSON.parse(savedMsgs) : {};
 
     // Fetch ads from Supabase
-    const { data, error } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+    const { data, error } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
     
     if (error) {
       console.error('Supabase error:', error);
@@ -82,7 +90,7 @@ async function load() {
     } else {
       // Seed DB with demo ads if empty
       for (const ad of DEMO_ADS) {
-        await supabase.from('ads').insert({
+        await getSupabase().from('ads').insert({
           title: ad.title,
           category: ad.category,
           subcategory: ad.subcategory,
@@ -100,7 +108,7 @@ async function load() {
           featured: ad.featured || false
         });
       }
-      const { data: newData } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+      const { data: newData } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
       if (newData) ads = newData.map(mapDbAd);
     }
     
@@ -297,7 +305,7 @@ function openAdDetail(id) {
 
   // Increment view count
   ad.views = (ad.views || 0) + 1;
-  supabase.from('ads').update({ views: ad.views }).eq('id', id).then();
+  getSupabase().from('ads').update({ views: ad.views }).eq('id', id).then();
 
   const isFav = favorites.includes(ad.id);
   const photos = ad.imgs && ad.imgs.length ? ad.imgs : [];
@@ -593,13 +601,13 @@ async function saveAd() {
 
   try {
     if (editId) {
-      await supabase.from('ads').update({
+      await getSupabase().from('ads').update({
         title, price, city, district, category, subcategory, description: desc, phone, wa, condition, 
         imgs: tempPhotos.length ? tempPhotos : undefined
       }).eq('id', editId);
       showToast('İlan güncellendi!', 'success');
     } else {
-      await supabase.from('ads').insert({
+      await getSupabase().from('ads').insert({
         title, price, city, district, category, subcategory, description: desc, phone, wa, condition,
         seller_email: currentUser.email,
         seller_name: currentUser.name,
@@ -611,7 +619,7 @@ async function saveAd() {
     }
 
     // Refresh ads
-    const { data } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+    const { data } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
     if (data) ads = data.map(mapDbAd);
     
     tempPhotos = [];
@@ -633,7 +641,7 @@ async function saveAd() {
 async function deleteAd(id) {
   if (!confirm('Bu ilanı silmek istediğinizden emin misiniz?')) return;
   
-  await supabase.from('ads').delete().eq('id', id);
+  await getSupabase().from('ads').delete().eq('id', id);
   
   const idx = ads.findIndex(a => a.id === id);
   if (idx > -1) ads.splice(idx, 1);
@@ -898,7 +906,7 @@ async function toggleFeatured(id) {
   if (!ad) return;
   
   const newStatus = !ad.featured;
-  await supabase.from('ads').update({ featured: newStatus }).eq('id', id);
+  await getSupabase().from('ads').update({ featured: newStatus }).eq('id', id);
   ad.featured = newStatus;
   
   renderDash();
