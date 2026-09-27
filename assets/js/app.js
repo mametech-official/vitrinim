@@ -69,18 +69,35 @@ function save() {
 }
 
 
+function showSkeletons(count = 8) {
+  const grid = document.getElementById('adsGrid');
+  if (!grid) return;
+  grid.innerHTML = Array(count).fill(0).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-img"><div class="skeleton"></div></div>
+      <div class="skeleton-body">
+        <div class="skeleton skeleton-price"></div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-title-2"></div>
+        <div class="skeleton skeleton-meta"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
 async function load() {
   try {
     const savedFavs = localStorage.getItem('vt_favs');
     const savedUser = localStorage.getItem('vt_user');
-    const savedMsgs = localStorage.getItem('vt_msgs');
 
     favorites = savedFavs ? JSON.parse(savedFavs) : [];
     currentUser = savedUser ? JSON.parse(savedUser) : null;
-    messages = savedMsgs ? JSON.parse(savedMsgs) : {};
+
+    // Show skeletons immediately while fetching
+    showSkeletons(8);
 
     // Fetch ads from Supabase
-    const { data, error } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
+    const { data, error } = await getSupabase().from('ads').select('*').order('featured', { ascending: false }).order('created_at', { ascending: false });
     
     if (error) {
       console.error('Supabase error:', error);
@@ -89,25 +106,24 @@ async function load() {
       ads = data.map(mapDbAd);
     } else {
       // Seed DB with demo ads if empty
-      for (const ad of DEMO_ADS) {
-        await getSupabase().from('ads').insert({
-          title: ad.title,
-          category: ad.category,
-          subcategory: ad.subcategory,
-          price: ad.price,
-          city: ad.city,
-          district: ad.district,
-          condition: ad.condition,
-          description: ad.desc || '',
-          phone: ad.phone || '05555555555',
-          wa: ad.wa || '',
-          seller_email: 'demo@vitrinim.com',
-          seller_name: ad.seller,
-          imgs: ad.imgs,
-          views: ad.views || 0,
-          featured: ad.featured || false
-        });
-      }
+      const inserts = DEMO_ADS.map(ad => ({
+        title: ad.title,
+        category: ad.category,
+        subcategory: ad.subcategory,
+        price: ad.price,
+        city: ad.city,
+        district: ad.district,
+        condition: ad.condition,
+        description: ad.desc || '',
+        phone: ad.phone || null,
+        wa: ad.wa || null,
+        seller_email: 'demo@vitrinim.com',
+        seller_name: ad.seller,
+        imgs: ad.imgs,
+        views: ad.views || 0,
+        featured: ad.featured || false
+      }));
+      await getSupabase().from('ads').insert(inserts);
       const { data: newData } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
       if (newData) ads = newData.map(mapDbAd);
     }
@@ -117,6 +133,8 @@ async function load() {
     renderAds();
   } catch(e) {
     console.error(e);
+    ads = DEMO_ADS.map(a => ({ ...a }));
+    renderAds();
   }
 }
 
@@ -935,13 +953,38 @@ function openMsgs() {
   openModal('msgsOv');
 }
 
-function renderMsgs() {
+async function renderMsgs() {
   const el = document.getElementById('msgsContent');
   if (!el) return;
 
-  const myConvs = Object.entries(messages)
+  el.innerHTML = `<div style="padding:24px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h2>Mesajlarım</h2><button onclick="closeModal('msgsOv')" style="background:none;border:none;font-size:20px;color:var(--gray3);">✕</button></div><div style="text-align:center;padding:20px;color:var(--gray3);">Yükleniyor...</div></div>`;
+
+  // Fetch all conversations this user is part of
+  const { data, error } = await getSupabase()
+    .from('messages')
+    .select('*')
+    .or(`from_email.eq.${currentUser.email},conv_id.like.*${currentUser.email}*`)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error); }
+
+  // Group by conv_id
+  const convMap = {};
+  (data || []).forEach(m => {
+    if (!convMap[m.conv_id]) convMap[m.conv_id] = [];
+    convMap[m.conv_id].push(m);
+  });
+
+  const myConvs = Object.entries(convMap)
     .filter(([k]) => k.includes(currentUser.email))
     .map(([k, msgs]) => ({ id: k, msgs }));
+
+  const convId2Name = (id) => {
+    const parts = id.split('-');
+    // Remove ad ID (last part) and current user email to get other party
+    const withoutLast = parts.slice(0, -1).join('-');
+    return withoutLast.replace(currentUser.email, '').replace(/^-|-$/g, '') || 'Kullanıcı';
+  };
 
   el.innerHTML = `
     <div style="padding:24px;">
@@ -952,11 +995,12 @@ function renderMsgs() {
       ${myConvs.length === 0
         ? '<div class="empty-state"><h3>Mesajınız yok</h3><p>Bir ilan sayfasından satıcıya mesaj gönderin.</p></div>'
         : myConvs.map(c => {
-            const last = c.msgs[c.msgs.length - 1];
+            const last = c.msgs[0]; // already sorted desc
+            const name = convId2Name(c.id);
             return `<div class="conv-item" onclick="openConv('${c.id}')">
-              <div class="conv-avatar">${c.id.replace(currentUser.email,'').replace('-','').charAt(0).toUpperCase()}</div>
+              <div class="conv-avatar">${name.charAt(0).toUpperCase()}</div>
               <div class="conv-info">
-                <div class="conv-name">${c.id.replace(currentUser.email,'').replace(/-/g,'')}</div>
+                <div class="conv-name">${escHtml(name)}</div>
                 <div class="conv-last">${last ? escHtml(last.text) : ''}</div>
               </div>
             </div>`;
@@ -969,17 +1013,16 @@ function startChat(adId) {
   if (!currentUser) { openModal('authOv'); return; }
   const ad = ads.find(a => a.id === adId);
   if (!ad) return;
+  if (ad.seller === currentUser.email) { showToast('Kendi ilanınıza mesaj gönderemezsiniz', 'error'); return; }
   const convId = [currentUser.email, ad.seller || 'seller'].sort().join('-') + '-' + adId;
   currentConvId = convId;
-  if (!messages[convId]) messages[convId] = [];
   closeModal('adDetailOv');
-  openConv(convId, ad);
+  openConv(convId);
 }
 
-function openConv(convId, ad) {
+async function openConv(convId) {
   currentConvId = convId;
   const el = document.getElementById('msgsContent');
-  const msgs = messages[convId] || [];
 
   el.innerHTML = `
     <div class="chat-window open">
@@ -987,18 +1030,10 @@ function openConv(convId, ad) {
         <button onclick="renderMsgs()" style="background:none;border:none;color:var(--brand); display:flex; align-items:center; gap:4px; font-weight:600; font-size:14px;">
           <svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Geri
         </button>
-        <div style="font-weight:600;">${convId}</div>
+        <div style="font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(convId)}</div>
         <button onclick="closeModal('msgsOv')" style="margin-left:auto;background:none;border:none;font-size:20px;color:var(--gray3);">✕</button>
       </div>
-      <div class="chat-msgs" id="chatMsgArea">
-        ${msgs.length === 0 ? '<div style="text-align:center;color:var(--gray3);padding:20px;">Konuşma başlatmak için mesaj gönderin</div>' : ''}
-        ${msgs.map(m => `
-          <div class="chat-msg ${m.from === currentUser.email ? 'sent' : 'recv'}">
-            <div class="chat-bubble-msg">${escHtml(m.text)}</div>
-            <div class="chat-msg-time">${m.time}</div>
-          </div>
-        `).join('')}
-      </div>
+      <div class="chat-msgs" id="chatMsgArea"><div style="text-align:center;color:var(--gray3);padding:20px;">Yükleniyor...</div></div>
       <div class="chat-input-row" style="padding:0 24px 24px;">
         <input type="text" id="chatInput" placeholder="Mesajınızı yazın..." onkeydown="if(event.key==='Enter')sendChatMsg()">
         <button class="chat-send-btn" onclick="sendChatMsg()">
@@ -1008,29 +1043,58 @@ function openConv(convId, ad) {
       </div>
     </div>
   `;
-  const msgArea = document.getElementById('chatMsgArea');
-  if (msgArea) msgArea.scrollTop = msgArea.scrollHeight;
+
   openModal('msgsOv');
+
+  // Fetch messages from Supabase
+  const { data } = await getSupabase()
+    .from('messages')
+    .select('*')
+    .eq('conv_id', convId)
+    .order('created_at', { ascending: true });
+
+  const msgArea = document.getElementById('chatMsgArea');
+  if (!msgArea) return;
+
+  const msgs = data || [];
+  if (msgs.length === 0) {
+    msgArea.innerHTML = '<div style="text-align:center;color:var(--gray3);padding:20px;">Konuşmayı başlatmak için mesaj gönderin</div>';
+  } else {
+    msgArea.innerHTML = msgs.map(m => `
+      <div class="chat-msg ${m.from_email === currentUser.email ? 'sent' : 'recv'}">
+        <div class="chat-bubble-msg">${escHtml(m.text)}</div>
+        <div class="chat-msg-time">${new Date(m.created_at).toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    `).join('');
+    msgArea.scrollTop = msgArea.scrollHeight;
+  }
 }
 
-function sendChatMsg() {
+async function sendChatMsg() {
   const input = document.getElementById('chatInput');
   if (!input) return;
   const text = input.value.trim();
-  if (!text || !currentConvId) return;
-  if (!messages[currentConvId]) messages[currentConvId] = [];
-  messages[currentConvId].push({
-    from: currentUser.email,
-    text,
-    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-  });
-  save();
-  updateBadges();
+  if (!text || !currentConvId || !currentUser) return;
+
   input.value = '';
+
+  const { error } = await getSupabase().from('messages').insert({
+    conv_id: currentConvId,
+    from_email: currentUser.email,
+    from_name: currentUser.name,
+    text
+  });
+
+  if (error) { console.error(error); showToast('Mesaj gönderilemedi', 'error'); return; }
+
+  updateBadges();
+  // Reload conversation
   openConv(currentConvId);
 }
 
+
 // ========================= SHARE =========================
+
 function openShare(id) {
   const ad = ads.find(a => a.id === id);
   if (!ad) return;

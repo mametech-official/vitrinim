@@ -914,3 +914,29 @@ img { max-width: 100%; display: block; }
   .ads-grid { grid-template-columns: 1fr; }
   .hero-stats { flex-direction: column; gap: 16px; }
 }
+
+/* ========== SKELETON LOADER ========== */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.skeleton-img { width: 100%; padding-top: 70%; position: relative; }
+.skeleton-img .skeleton { position: absolute; inset: 0; border-radius: 0; }
+.skeleton-body { padding: 12px; }
+.skeleton-price { height: 20px; width: 60%; margin-bottom: 10px; }
+.skeleton-title { height: 14px; width: 100%; margin-bottom: 6px; }
+.skeleton-title-2 { height: 14px; width: 75%; margin-bottom: 10px; }
+.skeleton-meta { height: 12px; width: 80%; }
+
