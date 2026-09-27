@@ -1011,15 +1011,6 @@ async function doAuth() {
   if (pass.length < 6) return showToast('Şifre en az 6 karakter olmalı!', 'error');
   if (authMode === 'register' && !name) return showToast('Ad soyad gerekli!', 'error');
 
-  // Admin shortcut
-  if (email === 'admin@vitrinim.com' && pass === 'admin123') {
-    currentUser = { email, name: 'Admin', isAdmin: true, isSeller: true };
-    save(); updateHeaderUser(); updateBadges();
-    closeModal('authOv');
-    showToast('Admin paneline hoş geldiniz! 🔐', 'success');
-    openDash(); return;
-  }
-
   const submitBtn = document.querySelector('#authOv .btn-submit');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Lütfen bekleyin...'; }
 
