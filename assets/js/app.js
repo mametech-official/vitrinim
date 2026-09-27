@@ -21,6 +21,35 @@ let currentConvId = null;
 let displayedCount = 12;
 const PAGE_SIZE = 12;
 
+
+const supabaseUrl = 'https://rxgywnzandkdpyiopnys.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Z3l3bnphbmRrZHB5aW9wbnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0NDU1MTMsImV4cCI6MjEwNjAyMTUxM30.vfqAZjk0wZPh6LwHo6dLiKpHqVgte2RKH_6y2SSqbZk';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+function mapDbAd(dbAd) {
+  return {
+    id: dbAd.id,
+    title: dbAd.title,
+    category: dbAd.category,
+    subcategory: dbAd.subcategory,
+    price: dbAd.price,
+    city: dbAd.city,
+    district: dbAd.district,
+    condition: dbAd.condition,
+    desc: dbAd.description,
+    phone: dbAd.phone,
+    wa: dbAd.wa,
+    seller: dbAd.seller_email,
+    sellerName: dbAd.seller_name,
+    sellerSince: '2024',
+    imgs: dbAd.imgs || [],
+    views: dbAd.views,
+    featured: dbAd.featured,
+    date: dbAd.created_at
+  };
+}
+
+
 // ========================= STORAGE =========================
 function save() {
   try {
@@ -31,35 +60,62 @@ function save() {
   } catch(e) {}
 }
 
-function load() {
+
+async function load() {
   try {
-    const savedAds = localStorage.getItem('vt_ads');
     const savedFavs = localStorage.getItem('vt_favs');
     const savedUser = localStorage.getItem('vt_user');
     const savedMsgs = localStorage.getItem('vt_msgs');
 
-    if (savedAds) {
-      ads = JSON.parse(savedAds);
-    } else {
-      // Load demo data
-      ads = DEMO_ADS.map(a => ({ ...a }));
-      save();
-    }
     favorites = savedFavs ? JSON.parse(savedFavs) : [];
     currentUser = savedUser ? JSON.parse(savedUser) : null;
     messages = savedMsgs ? JSON.parse(savedMsgs) : {};
+
+    // Fetch ads from Supabase
+    const { data, error } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      ads = DEMO_ADS.map(a => ({ ...a })); // Fallback
+    } else if (data && data.length > 0) {
+      ads = data.map(mapDbAd);
+    } else {
+      // Seed DB with demo ads if empty
+      for (const ad of DEMO_ADS) {
+        await supabase.from('ads').insert({
+          title: ad.title,
+          category: ad.category,
+          subcategory: ad.subcategory,
+          price: ad.price,
+          city: ad.city,
+          district: ad.district,
+          condition: ad.condition,
+          description: ad.desc || '',
+          phone: ad.phone || '05555555555',
+          wa: ad.wa || '',
+          seller_email: 'demo@vitrinim.com',
+          seller_name: ad.seller,
+          imgs: ad.imgs,
+          views: ad.views || 0,
+          featured: ad.featured || false
+        });
+      }
+      const { data: newData } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+      if (newData) ads = newData.map(mapDbAd);
+    }
+    
+    updateHeroStats();
+    updateCategoryCounts();
+    renderAds();
   } catch(e) {
-    ads = DEMO_ADS.map(a => ({ ...a }));
-    favorites = [];
-    currentUser = null;
-    messages = {};
+    console.error(e);
   }
 }
 
+
 // ========================= INIT =========================
 document.addEventListener('DOMContentLoaded', function() {
-  load();
-  updateHeaderUser();
+  load().then(() => { updateHeaderUser(); });
   updateBadges();
   updateHeroStats();
   updateCategoryCounts();
@@ -241,7 +297,7 @@ function openAdDetail(id) {
 
   // Increment view count
   ad.views = (ad.views || 0) + 1;
-  save();
+  supabase.from('ads').update({ views: ad.views }).eq('id', id).then();
 
   const isFav = favorites.includes(ad.id);
   const photos = ad.imgs && ad.imgs.length ? ad.imgs : [];
@@ -511,7 +567,8 @@ function updateSubcategories() {
     subs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
 }
 
-function saveAd() {
+
+async function saveAd() {
   const title = document.getElementById('fTitle').value.trim();
   const price = parseFloat(document.getElementById('fPrice').value);
   const city = document.getElementById('fCity').value;
@@ -531,48 +588,63 @@ function saveAd() {
 
   const editId = document.getElementById('fEditId').value;
 
-  if (editId) {
-    const idx = ads.findIndex(a => a.id === +editId);
-    if (idx > -1) {
-      ads[idx] = { ...ads[idx], title, price, city, district, category, subcategory, desc, phone, wa, condition, imgs: tempPhotos.length ? tempPhotos : ads[idx].imgs };
+  document.querySelector('.btn-submit').textContent = 'Kaydediliyor...';
+  document.querySelector('.btn-submit').disabled = true;
+
+  try {
+    if (editId) {
+      await supabase.from('ads').update({
+        title, price, city, district, category, subcategory, description: desc, phone, wa, condition, 
+        imgs: tempPhotos.length ? tempPhotos : undefined
+      }).eq('id', editId);
       showToast('İlan güncellendi!', 'success');
+    } else {
+      await supabase.from('ads').insert({
+        title, price, city, district, category, subcategory, description: desc, phone, wa, condition,
+        seller_email: currentUser.email,
+        seller_name: currentUser.name,
+        imgs: tempPhotos.length ? tempPhotos : [],
+        views: 0,
+        featured: false
+      });
+      showToast('İlanınız yayınlandı! 🎉', 'success');
     }
-  } else {
-    const newAd = {
-      id: Date.now(),
-      title, price, city, district, category, subcategory, desc, phone, wa, condition,
-      seller: currentUser.email,
-      sellerName: currentUser.name,
-      sellerSince: new Date().getFullYear().toString(),
-      imgs: tempPhotos.length ? [...tempPhotos] : null,
-      views: 0,
-      date: new Date().toISOString().split('T')[0]
-    };
-    ads.unshift(newAd);
-    showToast('İlanınız yayınlandı! 🎉', 'success');
-  }
 
-  tempPhotos = [];
-  save();
-  updateHeroStats();
-  updateCategoryCounts();
-  renderAds();
-  closeModal('addAdOv');
-}
-
-function deleteAd(id) {
-  if (!confirm('Bu ilanı silmek istediğinizden emin misiniz?')) return;
-  const idx = ads.findIndex(a => a.id === id);
-  if (idx > -1) {
-    ads.splice(idx, 1);
-    save();
-    renderAds();
+    // Refresh ads
+    const { data } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+    if (data) ads = data.map(mapDbAd);
+    
+    tempPhotos = [];
     updateHeroStats();
     updateCategoryCounts();
-    showToast('İlan silindi', 'info');
-    openDash(); // refresh dash
+    renderAds();
+    if (document.getElementById('dashOv').classList.contains('open')) renderDash();
+    closeModal('addAdOv');
+  } catch(e) {
+    showToast('Bir hata oluştu', 'error');
+  } finally {
+    document.querySelector('.btn-submit').textContent = 'İlanı Yayınla';
+    document.querySelector('.btn-submit').disabled = false;
   }
 }
+
+
+
+async function deleteAd(id) {
+  if (!confirm('Bu ilanı silmek istediğinizden emin misiniz?')) return;
+  
+  await supabase.from('ads').delete().eq('id', id);
+  
+  const idx = ads.findIndex(a => a.id === id);
+  if (idx > -1) ads.splice(idx, 1);
+  
+  renderAds();
+  updateHeroStats();
+  updateCategoryCounts();
+  showToast('İlan silindi', 'info');
+  openDash(); // refresh dash
+}
+
 
 // ========================= AUTH =========================
 function setAuthTab(mode) {
@@ -820,15 +892,20 @@ function renderDashTab() {
   }
 }
 
-function toggleFeatured(id) {
+
+async function toggleFeatured(id) {
   const ad = ads.find(a => a.id === id);
   if (!ad) return;
-  ad.featured = !ad.featured;
-  save();
+  
+  const newStatus = !ad.featured;
+  await supabase.from('ads').update({ featured: newStatus }).eq('id', id);
+  ad.featured = newStatus;
+  
   renderDash();
   renderAds();
-  showToast(ad.featured ? 'İlan öne çıkarıldı!' : 'İlan normal duruma getirildi.', 'success');
+  showToast(newStatus ? 'İlan öne çıkarıldı!' : 'İlan normal duruma getirildi.', 'success');
 }
+
 
 // ========================= MESSAGES =========================
 function openMsgs() {
