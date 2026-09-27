@@ -707,12 +707,9 @@ function handlePhotoUpload(event) {
   const files = Array.from(event.target.files);
   files.forEach(file => {
     if (tempPhotos.length >= 8) { showToast('En fazla 8 fotoğraf ekleyebilirsiniz', 'error'); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      tempPhotos.push(e.target.result);
-      renderPhotoSlots();
-    };
-    reader.readAsDataURL(file);
+    // Store object URL for preview, and keep the original file for upload
+    tempPhotos.push({ url: URL.createObjectURL(file), file: file });
+    renderPhotoSlots();
   });
   event.target.value = '';
 }
@@ -720,9 +717,9 @@ function handlePhotoUpload(event) {
 function renderPhotoSlots() {
   const container = document.getElementById('photoSlots');
   if (!container) return;
-  let html = tempPhotos.map((src, i) => `
+  let html = tempPhotos.map((photo, i) => `
     <div class="photo-slot" style="border-style:solid; border-color:var(--border);">
-      <img src="${src}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+      <img src="${photo.url || photo}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
       <button class="remove-photo" onclick="removePhoto(${i})" title="Kaldır">✕</button>
     </div>
   `).join('');
@@ -752,6 +749,41 @@ function updateSubcategories() {
     subs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
 }
 
+// Generate unique ID for files
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+async function uploadPhotos() {
+  const uploadedUrls = [];
+  for (const photo of tempPhotos) {
+    if (photo.file) { // It's a new file to upload
+      const fileExt = photo.file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `${currentUser.email}/${fileName}`;
+      
+      const { error: uploadError } = await getSupabase().storage
+        .from('ad-photos')
+        .upload(filePath, photo.file);
+
+      if (uploadError) {
+        console.error('Upload failed:', uploadError);
+        throw new Error('Fotoğraf yüklenemedi');
+      }
+
+      const { data } = getSupabase().storage.from('ad-photos').getPublicUrl(filePath);
+      uploadedUrls.push(data.publicUrl);
+    } else {
+      // It's an existing URL from an edit
+      uploadedUrls.push(photo.url || photo);
+    }
+  }
+  return uploadedUrls;
+}
+
 async function saveAd() {
   const title = document.getElementById('fTitle').value.trim();
   const price = parseFloat(document.getElementById('fPrice').value);
@@ -772,16 +804,23 @@ async function saveAd() {
   const editId = document.getElementById('fEditId').value;
 
   const submitBtn = document.querySelector('#addAdOv .btn-submit');
-  if (submitBtn) { submitBtn.textContent = 'Kaydediliyor...'; submitBtn.disabled = true; }
+  if (submitBtn) { submitBtn.textContent = 'Kaydediliyor... (Fotoğraflar yükleniyor)'; submitBtn.disabled = true; }
 
   try {
+    let finalPhotos = [];
+    try {
+      finalPhotos = await uploadPhotos();
+    } catch (e) {
+      return showToast(e.message, 'error');
+    }
+
     let sbError = null;
 
     if (editId) {
       const { error } = await getSupabase().from('ads').update({
         title, price, city, district, category, subcategory, description: desc,
         phone: phone || null, wa: wa || null, condition,
-        imgs: tempPhotos.length ? tempPhotos : undefined
+        imgs: finalPhotos.length ? finalPhotos : undefined
       }).eq('id', editId);
       sbError = error;
       if (!error) showToast('İlan güncellendi!', 'success');
@@ -791,10 +830,11 @@ async function saveAd() {
         phone: phone || null, wa: wa || null, condition,
         seller_email: currentUser.email,
         seller_name: currentUser.name,
-        imgs: tempPhotos.length ? tempPhotos : [],
+        imgs: finalPhotos.length ? finalPhotos : [],
         views: 0, featured: false
       });
       sbError = error;
+
       if (!error) {
         showToast('İlanınız yayınlandı! 🎉', 'success');
         // Save seller profile if not exists
