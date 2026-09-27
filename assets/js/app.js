@@ -277,11 +277,14 @@ function renderAds() {
 
 function renderAdCard(ad) {
   const isFav = favorites.includes(ad.id);
-  const img = ad.imgs?.[0] || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150"><rect fill="%23f0f0f0" width="200" height="150"/><text fill="%23aaa" font-size="14" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle">Fotoğraf Yok</text></svg>';
+  const img = ad.imgs?.[0] || '';
   return `
     <div class="ad-card" onclick="openAdDetail(${ad.id})">
       <div class="ad-img-wrap">
-        <img class="ad-img" src="${img}" alt="${escHtml(ad.title)}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 150%22><rect fill=%22%23f0f0f0%22 width=%22200%22 height=%22150%22/><text fill=%22%23aaa%22 font-size=%2214%22 x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22>Fotoğraf Yok</text></svg>'">
+        ${img
+          ? `<img class="ad-img" src="${img}" alt="${escHtml(ad.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=ad-img-placeholder>📷</div>'">`
+          : `<div class="ad-img-placeholder">📷</div>`
+        }
         <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFav(${ad.id})" title="${isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </button>

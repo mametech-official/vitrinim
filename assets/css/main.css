@@ -969,4 +969,15 @@ img { max-width: 100%; display: block; }
 /* ========== Leaflet override ========== */
 .leaflet-container { z-index: 1; }
 
+/* ========== Photo placeholder ========== */
+.ad-img-placeholder {
+  width: 100%; padding-top: 70%; position: relative;
+  background: #f5f5f5; display: flex; align-items: center; justify-content: center;
+}
+.ad-img-placeholder::after {
+  content: '📷'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); font-size: 32px; opacity: 0.4;
+}
+
+
 
