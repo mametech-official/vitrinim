@@ -1427,6 +1427,40 @@ async function sendChatMsg() {
   });
 
   if (error) { console.error(error); showToast('Mesaj gönderilemedi', 'error'); return; }
+  
+  // E-posta Bildirimi (EmailJS)
+  try {
+    if (window.emailjs) {
+      let toEmail = currentConvId;
+      let adTitle = 'İlanınız';
+      const adIdMatch = currentConvId.match(/-(\d+)$/);
+      
+      if (adIdMatch) {
+        const adId = adIdMatch[1];
+        const emailsPart = currentConvId.replace('-' + adId, '');
+        if (emailsPart.startsWith(currentUser.email + '-')) {
+          toEmail = emailsPart.substring(currentUser.email.length + 1);
+        } else if (emailsPart.endsWith('-' + currentUser.email)) {
+          toEmail = emailsPart.substring(0, emailsPart.length - currentUser.email.length - 1);
+        } else {
+          toEmail = emailsPart.replace(currentUser.email, '').replace(/^-|-$/g, '');
+        }
+        
+        const ad = ads.find(a => a.id == adId);
+        if (ad) adTitle = ad.title;
+      }
+
+      emailjs.send("service_nymxtbv", "template_x263u2v", {
+        to_email: toEmail,
+        sender_name: currentUser.name,
+        message: text,
+        ad_title: adTitle
+      }, "otkyqPGiVxZgUJ_Bk");
+    }
+  } catch(err) {
+    console.error("EmailJS Error:", err);
+  }
+
   updateBadges();
   openConv(currentConvId);
 }
