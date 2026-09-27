@@ -592,36 +592,48 @@ async function saveAd() {
   if (isNaN(price) || price < 0) return showToast('Geçerli bir fiyat girin!', 'error');
   if (!city) return showToast('Şehir seçmelisiniz!', 'error');
   if (!category) return showToast('Kategori seçmelisiniz!', 'error');
-  if (!phone) return showToast('Telefon numarası gerekli!', 'error');
 
   const editId = document.getElementById('fEditId').value;
 
-  document.querySelector('.btn-submit').textContent = 'Kaydediliyor...';
-  document.querySelector('.btn-submit').disabled = true;
+  const submitBtn = document.querySelector('#addAdOv .btn-submit');
+  if (submitBtn) { submitBtn.textContent = 'Kaydediliyor...'; submitBtn.disabled = true; }
 
   try {
+    let sbError = null;
+
     if (editId) {
-      await getSupabase().from('ads').update({
-        title, price, city, district, category, subcategory, description: desc, phone, wa, condition, 
+      const { error } = await getSupabase().from('ads').update({
+        title, price, city, district, category, subcategory, description: desc,
+        phone: phone || null, wa: wa || null, condition,
         imgs: tempPhotos.length ? tempPhotos : undefined
       }).eq('id', editId);
-      showToast('İlan güncellendi!', 'success');
+      sbError = error;
+      if (!error) showToast('İlan güncellendi!', 'success');
     } else {
-      await getSupabase().from('ads').insert({
-        title, price, city, district, category, subcategory, description: desc, phone, wa, condition,
+      const { error } = await getSupabase().from('ads').insert({
+        title, price, city, district, category, subcategory, description: desc,
+        phone: phone || null, wa: wa || null, condition,
         seller_email: currentUser.email,
         seller_name: currentUser.name,
         imgs: tempPhotos.length ? tempPhotos : [],
         views: 0,
         featured: false
       });
-      showToast('İlanınız yayınlandı! 🎉', 'success');
+      sbError = error;
+      if (!error) showToast('İlanınız yayınlandı! 🎉', 'success');
     }
 
-    // Refresh ads
-    const { data } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
+    if (sbError) {
+      console.error('Supabase insert/update error:', sbError);
+      showToast('Hata: ' + (sbError.message || 'Bilinmeyen hata'), 'error');
+      return;
+    }
+
+    // Refresh ads from DB
+    const { data, error: fetchErr } = await getSupabase().from('ads').select('*').order('created_at', { ascending: false });
+    if (fetchErr) console.error('Fetch error:', fetchErr);
     if (data) ads = data.map(mapDbAd);
-    
+
     tempPhotos = [];
     updateHeroStats();
     updateCategoryCounts();
@@ -629,12 +641,13 @@ async function saveAd() {
     if (document.getElementById('dashOv').classList.contains('open')) renderDash();
     closeModal('addAdOv');
   } catch(e) {
-    showToast('Bir hata oluştu', 'error');
+    console.error('saveAd exception:', e);
+    showToast('Bir hata oluştu: ' + e.message, 'error');
   } finally {
-    document.querySelector('.btn-submit').textContent = 'İlanı Yayınla';
-    document.querySelector('.btn-submit').disabled = false;
+    if (submitBtn) { submitBtn.textContent = 'İlanı Yayınla'; submitBtn.disabled = false; }
   }
 }
+
 
 
 
