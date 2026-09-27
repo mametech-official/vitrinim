@@ -703,11 +703,53 @@ function openEditAd(id) {
   openModal('addAdOv');
 }
 
+// ========================= SECURITY HELPERS =========================
+
+// Yasaklı kelime listesi (Türkçe + genel)
+const BAD_WORDS = [
+  'siktir','orospu','orospu çocuğu','piç','bok','amk','amına','göt','götveren',
+  'ibne','yarrak','oç','pezevenk','kahpe','kaltak','sürtük','şerefsiz','bok',
+  'sikik','sik','am ','yarrag','yarak','meme','porno','sex','seks','escort',
+  'kumar','bahis','iddaa','sahte','dolandır','scam','hack'
+];
+
+function filterBadWords(text) {
+  if (!text) return text;
+  let result = text;
+  BAD_WORDS.forEach(word => {
+    const regex = new RegExp(word, 'gi');
+    result = result.replace(regex, '*'.repeat(word.length));
+  });
+  return result;
+}
+
+function hasBadWords(text) {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return BAD_WORDS.some(w => lower.includes(w));
+}
+
+// Fotoğraf boyut ve tür doğrulama
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_IMAGE_SIZE_MB = 5;
+
 function handlePhotoUpload(event) {
   const files = Array.from(event.target.files);
   files.forEach(file => {
     if (tempPhotos.length >= 8) { showToast('En fazla 8 fotoğraf ekleyebilirsiniz', 'error'); return; }
-    // Store object URL for preview, and keep the original file for upload
+
+    // Tür kontrolü
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      showToast(`"${file.name}" desteklenmiyor. Sadece JPG, PNG, WEBP, GIF yükleyebilirsiniz.`, 'error');
+      return;
+    }
+
+    // Boyut kontrolü (5 MB)
+    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+      showToast(`"${file.name}" çok büyük (maks ${MAX_IMAGE_SIZE_MB} MB).`, 'error');
+      return;
+    }
+
     tempPhotos.push({ url: URL.createObjectURL(file), file: file });
     renderPhotoSlots();
   });
@@ -797,9 +839,23 @@ async function saveAd() {
   const condition = document.getElementById('fCondition').value;
 
   if (!title) return showToast('İlan başlığı gerekli!', 'error');
+  if (title.length < 5) return showToast('Başlık en az 5 karakter olmalı!', 'error');
+  if (title.length > 100) return showToast('Başlık en fazla 100 karakter olabilir!', 'error');
   if (isNaN(price) || price < 0) return showToast('Geçerli bir fiyat girin!', 'error');
+  if (price > 100000000) return showToast('Fiyat çok yüksek görünüyor!', 'error');
   if (!city) return showToast('Şehir seçmelisiniz!', 'error');
   if (!category) return showToast('Kategori seçmelisiniz!', 'error');
+  if (desc.length > 2000) return showToast('Açıklama en fazla 2000 karakter olabilir!', 'error');
+
+  // Küfür filtresi
+  if (hasBadWords(title) || hasBadWords(desc)) {
+    return showToast('İlan başlığı veya açıklaması uygunsuz ifadeler içeriyor!', 'error');
+  }
+
+  // Telefon format kontrolü (isteğe bağlı ama girilmişse kontrol et)
+  if (phone && !/^[0-9+\-\s()]{7,15}$/.test(phone)) {
+    return showToast('Geçerli bir telefon numarası girin!', 'error');
+  }
 
   const editId = document.getElementById('fEditId').value;
 
@@ -846,7 +902,14 @@ async function saveAd() {
 
     if (sbError) {
       console.error('Supabase error:', sbError);
-      showToast('Hata: ' + (sbError.message || 'Bilinmeyen hata'), 'error');
+      const msg = sbError.message || '';
+      if (msg.includes('Günlük ilan sınırına') || msg.includes('rate')) {
+        showToast('⛔ Günlük ilan sınırınıza ulaştınız! En fazla 5 ilan/gün yayınlayabilirsiniz.', 'error');
+      } else if (msg.includes('duplicate')) {
+        showToast('Bu ilan zaten mevcut!', 'error');
+      } else {
+        showToast('Hata: ' + msg, 'error');
+      }
       return;
     }
 
