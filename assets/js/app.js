@@ -963,7 +963,7 @@ async function renderMsgs() {
   const { data, error } = await getSupabase()
     .from('messages')
     .select('*')
-    .or(`from_email.eq.${currentUser.email},conv_id.like.*${currentUser.email}*`)
+    .ilike('conv_id', `%${currentUser.email}%`)
     .order('created_at', { ascending: false });
 
   if (error) { console.error(error); }
