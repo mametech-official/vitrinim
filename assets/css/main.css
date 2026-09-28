@@ -697,7 +697,7 @@ img { max-width: 100%; display: block; }
 #addAdOv .modal-inner {
   max-width: 720px;
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-y: auto;
   max-height: 92vh;
 }
 
