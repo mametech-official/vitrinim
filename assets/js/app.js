@@ -233,9 +233,26 @@ function showRealtimeNotif(text) {
 }
 
 // ========================= HERO STATS =========================
-function updateHeroStats() {
-  const el = document.getElementById('heroAdCount');
-  if (el) el.textContent = ads.length.toLocaleString('tr-TR');
+async function updateHeroStats() {
+  const adEl = document.getElementById('hsTotalAds');
+  if (adEl) adEl.textContent = ads.length.toLocaleString('tr-TR');
+
+  const userEl = document.getElementById('hsTotalUsers');
+  if (userEl) {
+    try {
+      const { count, error } = await getSupabase()
+        .from('user_profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (!error && count !== null) {
+        // En az 100 üye göstererek biraz dolu gösterelim, üstüne gerçek sayıyı ekleyelim (opsiyonel)
+        // Ya da direkt gerçek sayıyı gösterelim:
+        userEl.textContent = count.toLocaleString('tr-TR');
+      }
+    } catch(e) {
+      console.error('Üye sayısı çekilemedi:', e);
+    }
+  }
 }
 
 function updateCategoryCounts() {
