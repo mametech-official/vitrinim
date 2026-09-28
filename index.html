@@ -466,8 +466,15 @@
   <div class="modal-inner"><div class="share-modal" id="shareContent"></div></div>
 </div>
 
+<!-- OFFER MODAL -->
+<div class="modal-overlay" id="offerModalOv" onclick="ovClick(event,'offerModalOv')">
+  <div class="modal-inner" style="max-width:460px;"><div id="offerContent"></div></div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<link rel="manifest" href="manifest.json">
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

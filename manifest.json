@@ -1,0 +1,26 @@
+{
+  "name": "Vitrinim",
+  "short_name": "Vitrinim",
+  "description": "Türkiye'nin ilan platformu",
+  "start_url": "/vitrinim/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#f77f00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/f77f00/ffffff?text=V",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/f77f00/ffffff?text=V",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "business"],
+  "lang": "tr"
+}

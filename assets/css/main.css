@@ -538,6 +538,40 @@ img { max-width: 100%; display: block; }
 }
 .load-more-btn:hover { background: var(--brand); color: #fff; }
 
+/* ===== Acil & Featured Badges ===== */
+.ad-card-urgent {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef444430;
+}
+.ad-badge-urgent {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  animation: urgentPulse 2s infinite;
+}
+.ad-badge-featured {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  left: auto !important;
+  right: 8px !important;
+}
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+/* ===== Offer Button ===== */
+.btn-offer {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+.btn-offer:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(99,102,241,0.45); }
+
 /* ========== MODALS ========== */
 .modal-overlay {
   position: fixed;

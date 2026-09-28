@@ -331,7 +331,7 @@ function renderAdCard(ad) {
   const isFav = favorites.includes(ad.id);
   const img = ad.imgs?.[0] || '';
   return `
-    <div class="ad-card" onclick="openAdDetail(${ad.id})">
+    <div class="ad-card ${ad.urgent ? 'ad-card-urgent' : ''}" onclick="openAdDetail(${ad.id})">
       <div class="ad-img-wrap">
         ${img
           ? `<img class="ad-img" src="${img}" alt="${escHtml(ad.title)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=ad-img-placeholder>📷</div>'">`
@@ -340,15 +340,18 @@ function renderAdCard(ad) {
         <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFav(${ad.id})" title="${isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </button>
-        ${ad.condition ? `<span class="ad-badge ${ad.condition}">${ad.condition === 'sıfır' ? 'Sıfır' : '2. El'}</span>` : ''}
-        ${ad.featured ? `<span class="ad-badge" style="background:#f59e0b; left:auto; right:8px; bottom:8px;">⭐ Öne Çıkan</span>` : ''}
+        ${ad.urgent ? `<span class="ad-badge ad-badge-urgent">🔥 Acil</span>` : (ad.condition ? `<span class="ad-badge ${ad.condition}">${ad.condition === 'sıfır' ? 'Sıfır' : '2. El'}</span>` : '')}
+        ${ad.featured ? `<span class="ad-badge ad-badge-featured">⭐ Öne Çıkan</span>` : ''}
       </div>
       <div class="ad-body">
         <div class="ad-price">${formatPrice(ad.price)}</div>
         <div class="ad-title">${escHtml(ad.title)}</div>
         <div class="ad-meta">
           <span>📍 ${escHtml(ad.city)}${ad.district ? ' / ' + escHtml(ad.district) : ''}</span>
-          <span>${formatDate(ad.date)}</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span style="color:var(--gray4);">👁 ${ad.views||0}</span>
+            <span>${formatDate(ad.date)}</span>
+          </span>
         </div>
       </div>
     </div>`;
@@ -486,6 +489,7 @@ async function openAdDetail(id) {
           ${ad.phone ? `<a href="tel:${ad.phone}" class="btn-call">📞 Ara</a>` : ''}
           ${ad.wa ? `<a href="https://wa.me/${ad.wa.replace(/\D/g,'')}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : ''}
           <button class="btn-msg" onclick="startChat(${ad.id})">✉️ Mesaj Gönder</button>
+          ${currentUser && currentUser.email !== ad.seller ? `<button class="btn-offer" onclick="openOfferModal(${ad.id})">🤝 Teklif Ver</button>` : ''}
         </div>
 
         ${currentUser && currentUser.email !== ad.seller ? `
@@ -1002,8 +1006,108 @@ async function toggleFeatured(id) {
   ad.featured = newStatus;
   renderDash();
   renderAds();
-  showToast(newStatus ? 'İlan öne çıkarıldı!' : 'İlan normal duruma getirildi.', 'success');
+  showToast(newStatus ? '⭐ İlan öne çıkarıldı!' : 'İlan normal duruma getirildi.', 'success');
 }
+
+async function toggleUrgent(id) {
+  const ad = ads.find(a => a.id === id);
+  if (!ad) return;
+  const newStatus = !ad.urgent;
+  await getSupabase().from('ads').update({ urgent: newStatus }).eq('id', id);
+  ad.urgent = newStatus;
+  renderDash();
+  renderAds();
+  showToast(newStatus ? '🔥 İlan "Acil Satılık" olarak işaretlendi!' : 'Acil etiketi kaldırıldı.', 'success');
+}
+
+async function refreshAd(id) {
+  const now = new Date().toISOString();
+  const { error } = await getSupabase().from('ads').update({
+    refreshed_at: now,
+    created_at: now
+  }).eq('id', id);
+  if (error) { showToast('Hata: ' + error.message, 'error'); return; }
+  const ad = ads.find(a => a.id === id);
+  if (ad) ad.date = now;
+  const { data } = await getSupabase().from('ads').select('*').order('featured', { ascending: false }).order('created_at', { ascending: false });
+  if (data) ads = data.map(mapDbAd);
+  renderDash();
+  renderAds();
+  showToast('📢 İlanınız yenilendi ve listenin başına geçti!', 'success');
+}
+
+function openOfferModal(adId) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad || !currentUser) return;
+  const price = ad.price;
+  const suggestedOffer = Math.round(price * 0.85);
+  const modal = document.getElementById('offerModalOv');
+  document.getElementById('offerContent').innerHTML = `
+    <div style="padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="font-size:18px;font-weight:800;">🤝 Teklif Ver</h3>
+        <button onclick="closeModal('offerModalOv')" style="background:none;border:none;font-size:22px;color:var(--gray3);cursor:pointer;">✕</button>
+      </div>
+      <div style="background:var(--gray6);padding:14px;border-radius:10px;margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--gray2);margin-bottom:4px;">${escHtml(ad.title)}</div>
+        <div style="font-size:20px;font-weight:900;color:var(--brand);">${formatPrice(price)}</div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px;font-weight:700;color:var(--gray2);display:block;margin-bottom:8px;">TEKLİF TUTARINIZ</label>
+        <div class="price-input-wrap">
+          <span class="price-input-prefix">₺</span>
+          <input type="number" id="offerAmount" value="${suggestedOffer}" min="1" style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:11px 14px 11px 42px;font-size:16px;font-weight:700;outline:none;" oninput="updateOfferNote(${price})">
+        </div>
+        <div id="offerNote" style="font-size:12px;color:var(--gray3);margin-top:6px;"></div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px;font-weight:700;color:var(--gray2);display:block;margin-bottom:8px;">MESAJINIZ (opsiyonel)</label>
+        <textarea id="offerMsg" placeholder="Teklifinizle ilgili not ekleyin..." style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:11px 14px;font-size:14px;resize:vertical;min-height:80px;outline:none;font-family:inherit;"></textarea>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button onclick="sendOffer(${adId})" style="flex:1;background:var(--brand-gradient);color:#fff;border:none;border-radius:var(--radius);padding:14px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:var(--shadow-brand);">🤝 Teklif Gönder</button>
+        <button onclick="closeModal('offerModalOv')" style="background:var(--gray6);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 20px;font-size:14px;font-weight:600;cursor:pointer;">İptal</button>
+      </div>
+    </div>
+  `;
+  updateOfferNote(price);
+  openModal('offerModalOv');
+}
+
+function updateOfferNote(listPrice) {
+  const val = parseFloat(document.getElementById('offerAmount')?.value || 0);
+  const el = document.getElementById('offerNote');
+  if (!el) return;
+  const pct = Math.round((1 - val / listPrice) * 100);
+  if (val >= listPrice) {
+    el.textContent = '✅ Liste fiyatı veya üzeri teklif';
+    el.style.color = 'var(--success)';
+  } else if (pct > 0) {
+    el.textContent = `Liste fiyatından %${pct} düşük`;
+    el.style.color = pct > 30 ? 'var(--error)' : 'var(--gray3)';
+  }
+}
+
+async function sendOffer(adId) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad || !currentUser) return;
+  const amount = parseFloat(document.getElementById('offerAmount')?.value);
+  const msg = document.getElementById('offerMsg')?.value?.trim() || '';
+  if (!amount || amount <= 0) return showToast('Geçerli bir tutar girin!', 'error');
+
+  const offerText = `🤝 *Teklif:* ${formatPrice(amount)}\n${msg ? `📝 Not: ${msg}` : ''}`;
+  const convId = [currentUser.email, ad.seller].sort().join('-') + '-' + adId;
+  const { error } = await getSupabase().from('messages').insert({
+    conv_id: convId,
+    from_email: currentUser.email,
+    from_name: currentUser.name,
+    text: offerText
+  });
+  if (error) { showToast('Teklif gönderilemedi: ' + error.message, 'error'); return; }
+  closeModal('offerModalOv');
+  showToast(`🤝 Teklifiniz gönderildi! ${formatPrice(amount)}`, 'success');
+}
+
 
 // ========================= AUTH =========================
 function setAuthTab(mode) {
@@ -1255,16 +1359,23 @@ function renderDashTab() {
       <div class="my-ad-item">
         <img class="my-ad-img" src="${ad.imgs?.[0] || ''}" onerror="this.style.display='none'" alt="">
         <div class="my-ad-info">
-          <div class="my-ad-title">${escHtml(ad.title)}</div>
+          <div class="my-ad-title">
+            ${ad.urgent ? '<span style="color:#ef4444;font-size:11px;font-weight:700;">🔥 ACİL</span> ' : ''}
+            ${ad.featured ? '<span style="color:#f59e0b;font-size:11px;font-weight:700;">⭐ ÖNE ÇIKAN</span> ' : ''}
+            ${escHtml(ad.title)}
+          </div>
           <div class="my-ad-price">${formatPrice(ad.price)}</div>
-          <div class="my-ad-meta">${escHtml(ad.city)} • ${ad.views||0} görüntülenme • ${formatDate(ad.date)}</div>
+          <div class="my-ad-meta">📍 ${escHtml(ad.city)} • 👁 ${ad.views||0} görüntülenme • ${formatDate(ad.date)}</div>
         </div>
-        <div class="my-ad-actions">
-          <button class="btn-edit-ad" onclick="openEditAd(${ad.id})">Düzenle</button>
-          <button class="btn-del-ad" onclick="deleteAd(${ad.id})">Sil</button>
+        <div class="my-ad-actions" style="flex-direction:column;gap:5px;">
+          <button class="btn-edit-ad" onclick="openEditAd(${ad.id})">✏️ Düzenle</button>
+          <button class="btn-edit-ad" style="background:#fff7ed;color:#f77f00;border-color:#f77f00;" onclick="refreshAd(${ad.id})">📢 Yenile</button>
+          <button class="btn-edit-ad" style="background:${ad.urgent?'#fee2e2':'#fff'};color:${ad.urgent?'#ef4444':'#666'};border-color:${ad.urgent?'#ef4444':'#ddd'};" onclick="toggleUrgent(${ad.id})">${ad.urgent ? '🔥 Acil Kaldır' : '🔥 Acil Yap'}</button>
+          <button class="btn-del-ad" onclick="deleteAd(${ad.id})">🗑️ Sil</button>
         </div>
       </div>
     `).join('')}</div>`;
+
   } else if (activeDashTab === 'favs') {
     const favAds = ads.filter(a => favorites.includes(a.id));
     if (favAds.length === 0) {
@@ -1283,24 +1394,69 @@ function renderDashTab() {
       </div>
     `).join('')}</div>`;
   } else if (activeDashTab === 'admin' && currentUser.isAdmin) {
+    // İstatistikler
+    const totalViews = ads.reduce((s,a) => s + (a.views||0), 0);
+    const totalUrgent = ads.filter(a => a.urgent).length;
+    const totalFeatured = ads.filter(a => a.featured).length;
+    const uniqueSellers = [...new Set(ads.map(a => a.seller).filter(Boolean))].length;
+    const catCounts = {};
+    ads.forEach(a => { catCounts[a.category] = (catCounts[a.category]||0) + 1; });
+    const topCats = Object.entries(catCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+    const maxCat = topCats[0]?.[1] || 1;
+
     el.innerHTML = `
       <div style="margin-top:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3>Admin Panel - İlan Yönetimi (${ads.length})</h3>
+        <!-- İstatistik Kartları -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+          ${[
+            {n: ads.length, l: 'Toplam İlan', e: '📋', c: '#6366f1'},
+            {n: uniqueSellers, l: 'Aktif Satıcı', e: '👤', c: '#10b981'},
+            {n: totalViews.toLocaleString('tr-TR'), l: 'Toplam Görüntülenme', e: '👁', c: '#f77f00'},
+            {n: totalFeatured, l: 'Öne Çıkan', e: '⭐', c: '#f59e0b'},
+          ].map(s => `
+            <div style="background:${s.c}12;border:1px solid ${s.c}30;border-radius:12px;padding:14px;text-align:center;">
+              <div style="font-size:24px;margin-bottom:4px;">${s.e}</div>
+              <div style="font-size:22px;font-weight:900;color:${s.c};">${s.n}</div>
+              <div style="font-size:11px;color:var(--gray3);font-weight:600;">${s.l}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Kategori Dağılımı -->
+        <div style="background:var(--gray6);border-radius:12px;padding:16px;margin-bottom:20px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📊 Kategori Dağılımı</div>
+          ${topCats.map(([cat, count]) => `
+            <div style="margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                <span style="font-weight:600;">${escHtml(cat)}</span>
+                <span style="color:var(--gray3);">${count} ilan</span>
+              </div>
+              <div style="background:var(--border);border-radius:99px;height:6px;overflow:hidden;">
+                <div style="background:var(--brand-gradient);height:100%;border-radius:99px;width:${Math.round(count/maxCat*100)}%;transition:width 0.5s;"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- İlan Yönetimi -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h3 style="font-size:14px;font-weight:700;">İlan Yönetimi (${ads.length})</h3>
         </div>
         <div class="my-ads-list">${ads.map(ad => `
           <div class="my-ad-item">
             <img class="my-ad-img" src="${ad.imgs?.[0] || ''}" onerror="this.style.display='none'" alt="">
             <div class="my-ad-info">
               <div class="my-ad-title">
-                ${ad.featured ? '<span style="color:#f59e0b;font-weight:bold;margin-right:5px;">⭐ ÖNE ÇIKAN</span>' : ''}
+                ${ad.urgent ? '<span style="color:#ef4444;font-size:10px;font-weight:700;">🔥 ACİL</span> ' : ''}
+                ${ad.featured ? '<span style="color:#f59e0b;font-size:10px;font-weight:700;">⭐ ÖÇIKAN</span> ' : ''}
                 ${escHtml(ad.title)}
               </div>
               <div class="my-ad-price">${formatPrice(ad.price)}</div>
-              <div class="my-ad-meta">Satıcı: ${escHtml(ad.seller || '?')} • ${escHtml(ad.city)} • ${ad.views||0} görüntülenme</div>
+              <div class="my-ad-meta">👤 ${escHtml(ad.seller||'?')} • 👁 ${ad.views||0} • ${escHtml(ad.city)}</div>
             </div>
-            <div class="my-ad-actions" style="display:flex; flex-direction:column; gap:6px; min-width:100px;">
-              <button class="btn-edit-ad" style="background:#f59e0b; border-color:#f59e0b; color:#fff;" onclick="toggleFeatured(${ad.id})">${ad.featured ? '⭐ İndir' : '⭐ Öne Çıkar'}</button>
+            <div class="my-ad-actions" style="flex-direction:column;gap:4px;min-width:110px;">
+              <button class="btn-edit-ad" style="background:#fef3c7;color:#d97706;border-color:#fcd34d;" onclick="toggleFeatured(${ad.id})">${ad.featured ? '⭐ İndir' : '⭐ Öne Çıkar'}</button>
+              <button class="btn-edit-ad" style="background:${ad.urgent?'#fee2e2':'#fff'};color:${ad.urgent?'#ef4444':'#666'};border-color:${ad.urgent?'#ef4444':'#ddd'};" onclick="toggleUrgent(${ad.id})">${ad.urgent ? '🔥 Acil Kaldır' : '🔥 Acil Yap'}</button>
               <button class="btn-edit-ad" onclick="openEditAd(${ad.id})">✏️ Düzenle</button>
               <button class="btn-del-ad" onclick="deleteAd(${ad.id})">🗑️ Sil</button>
             </div>
@@ -1310,6 +1466,7 @@ function renderDashTab() {
     `;
   }
 }
+
 
 // ========================= MESSAGES =========================
 function openMsgs() {
