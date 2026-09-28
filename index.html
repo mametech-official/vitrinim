@@ -308,21 +308,24 @@
         </button>
       </div>
       <div class="form-modal-body">
-        <!-- Photo Upload -->
+        <!-- Fotoğraflar -->
         <div class="photo-upload-area" id="photoUploadArea">
+          <span class="photo-upload-label">📸 Fotoğraflar <span style="color:var(--gray4);font-weight:400">(max 8 adet, her biri max 5MB)</span></span>
           <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="handlePhotoUpload(event)">
           <div class="photo-slots" id="photoSlots">
             <div class="photo-slot add-slot" onclick="document.getElementById('photoInput').click()">
               <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span>Fotoğraf Ekle</span>
-              <small>max 8 adet</small>
+              <span>Ekle</span>
             </div>
           </div>
         </div>
 
+        <!-- İlan Bilgileri -->
+        <div class="form-section-title">📝 İlan Bilgileri</div>
+
         <div class="form-group">
           <label>İlan Başlığı <span class="req">*</span></label>
-          <input type="text" id="fTitle" placeholder="Örn: 2019 Honda Civic 1.6 VTEC Turbo" maxlength="100">
+          <input type="text" id="fTitle" placeholder="Örn: 2019 Honda Civic 1.6 VTEC Turbo" maxlength="100" oninput="document.getElementById('titleCount').textContent=this.value.length+'/100'">
           <small class="char-count" id="titleCount">0/100</small>
         </div>
 
@@ -379,31 +382,37 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label>Fiyat (TL) <span class="req">*</span></label>
-            <input type="number" id="fPrice" placeholder="0" min="0">
+            <label>Fiyat <span class="req">*</span></label>
+            <div class="price-input-wrap">
+              <span class="price-input-prefix">₺</span>
+              <input type="number" id="fPrice" placeholder="0" min="0">
+            </div>
           </div>
           <div class="form-group">
             <label>Durum</label>
             <select id="fCondition">
-              <option value="ikinci el">İkinci El</option>
-              <option value="sıfır">Sıfır</option>
+              <option value="ikinci el">🔄 İkinci El</option>
+              <option value="sıfır">✨ Sıfır</option>
             </select>
           </div>
         </div>
 
+        <!-- Açıklama & İletişim -->
+        <div class="form-section-title">💬 Açıklama &amp; İletişim</div>
+
         <div class="form-group">
           <label>Açıklama</label>
-          <textarea id="fDesc" placeholder="İlanınızı detaylı açıklayın..." rows="5" maxlength="2000"></textarea>
+          <textarea id="fDesc" placeholder="İlanınızı detaylı açıklayın... Ürün özellikleri, neden satıyorsunuz vb." rows="4" maxlength="2000" oninput="document.getElementById('descCount').textContent=this.value.length+'/2000'"></textarea>
           <small class="char-count" id="descCount">0/2000</small>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label>İletişim Telefonu</label>
+            <label>📞 İletişim Telefonu</label>
             <input type="tel" id="fPhone" placeholder="05xx xxx xx xx">
           </div>
           <div class="form-group">
-            <label>WhatsApp (opsiyonel)</label>
+            <label>💬 WhatsApp <span style="color:var(--gray4);font-weight:400">(opsiyonel)</span></label>
             <input type="tel" id="fWhatsapp" placeholder="905xx xxx xx xx">
           </div>
         </div>
@@ -415,6 +424,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
