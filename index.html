@@ -6,7 +6,8 @@
   <title>Vitrinim - Türkiye'nin İlan Platformu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="assets/css/main.css?v=12">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="assets/css/main.css?v=15">
 </head>
 <body>
 
@@ -43,6 +44,10 @@
         </select>
         <div class="search-divider"></div>
         <input type="text" id="searchInput" placeholder="Ne arıyorsunuz?" oninput="handleSearch()" onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn-near-me" onclick="findNearestAds()" title="Konumuma Göre İlanları Bul">
+          <svg viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Yakınımda</span>
+        </button>
         <button class="search-btn" onclick="doSearch()">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
@@ -199,11 +204,14 @@
           <option value="price_desc">Fiyat (Yüksek→Düşük)</option>
         </select>
         <div class="view-toggle">
-          <button class="vt-btn active" id="gridViewBtn" onclick="setView('grid')" title="Izgara">
+          <button class="vt-btn active" id="gridViewBtn" onclick="setView('grid')" title="Izgara Görünümü">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </button>
-          <button class="vt-btn" id="listViewBtn" onclick="setView('list')" title="Liste">
+          <button class="vt-btn" id="listViewBtn" onclick="setView('list')" title="Liste Görünümü">
             <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <button class="vt-btn" id="mapViewBtn" onclick="setView('map')" title="Harita Görünümü">
+            <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
           </button>
         </div>
       </div>
@@ -214,7 +222,7 @@
       <aside class="filters-sidebar" id="filtersSidebar">
         <div class="filter-group">
           <div class="fg-title">Şehir</div>
-          <select class="filter-select" onchange="filterState.city=this.value; applyFilters()">
+          <select class="filter-select" id="filterCity" onchange="filterState.city=this.value; applyFilters()">
             <option value="">Tüm Türkiye</option>
             <option value="İstanbul">İstanbul</option>
             <option value="Ankara">Ankara</option>
@@ -238,6 +246,12 @@
             <input type="number" id="minPrice" placeholder="Min TL" oninput="filterState.minPrice=this.value?+this.value:null; applyFilters()">
             <span>-</span>
             <input type="number" id="maxPrice" placeholder="Max TL" oninput="filterState.maxPrice=this.value?+this.value:null; applyFilters()">
+          </div>
+          <div class="quick-price-chips">
+            <button type="button" class="qp-chip" onclick="setQuickPrice(null, 50000)">&lt; 50B ₺</button>
+            <button type="button" class="qp-chip" onclick="setQuickPrice(50000, 250000)">50B - 250B</button>
+            <button type="button" class="qp-chip" onclick="setQuickPrice(250000, 1000000)">250B - 1M</button>
+            <button type="button" class="qp-chip" onclick="setQuickPrice(1000000, null)">1M+ ₺</button>
           </div>
         </div>
         <div class="filter-group">
@@ -471,15 +485,60 @@
   <div class="modal-inner" style="max-width:460px;"><div id="offerContent"></div></div>
 </div>
 
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModalOv" onclick="ovClick(event,'reportModalOv')">
+  <div class="modal-inner" style="max-width:480px;"><div id="reportContent"></div></div>
+</div>
+
+<!-- LIGHTBOX MODAL -->
+<div class="lightbox-overlay" id="lightboxOv" onclick="handleLightboxClick(event)">
+  <button class="lightbox-close-btn" onclick="closeLightbox()" title="Kapat (ESC)">✕</button>
+  <button class="lightbox-nav-btn prev" onclick="lightboxPrev()" title="Önceki (Sol ok)">‹</button>
+  <div class="lightbox-stage">
+    <img id="lightboxImg" src="" alt="Tam ekran görsel">
+    <div class="lightbox-counter" id="lightboxCounter">1 / 1</div>
+  </div>
+  <button class="lightbox-nav-btn next" onclick="lightboxNext()" title="Sonraki (Sağ ok)">›</button>
+  <div class="lightbox-thumbs" id="lightboxThumbs"></div>
+</div>
+
+<!-- MOBILE BOTTOM NAVIGATION BAR -->
+<nav class="mobile-bottom-nav">
+  <div class="mb-item active" onclick="goHome()">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Ana Sayfa</span>
+  </div>
+  <div class="mb-item" onclick="focusSearch()">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>Ara</span>
+  </div>
+  <div class="mb-item mb-post" onclick="openAddAd()">
+    <div class="mb-post-btn">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <span>İlan Ver</span>
+  </div>
+  <div class="mb-item" onclick="currentUser ? openMsgs() : openModal('authOv')">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Mesajlar</span>
+    <span class="mb-badge" id="mbMsgBadge" style="display:none">0</span>
+  </div>
+  <div class="mb-item" onclick="currentUser ? openDash() : openModal('authOv')">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span id="mbUserLabel">Hesabım</span>
+  </div>
+</nav>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <link rel="manifest" href="manifest.json">
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/data.js?v=11"></script>
-<script src="assets/js/app.js?v=11"></script>
+<script src="assets/js/data.js?v=15"></script>
+<script src="assets/js/app.js?v=15"></script>
 
 </body>
 </html>

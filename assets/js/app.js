@@ -76,6 +76,7 @@ function mapDbAd(dbAd) {
     category: dbAd.category,
     subcategory: dbAd.subcategory,
     price: dbAd.price,
+    old_price: dbAd.old_price || null,
     city: dbAd.city,
     district: dbAd.district,
     condition: dbAd.condition,
@@ -88,6 +89,7 @@ function mapDbAd(dbAd) {
     imgs: dbAd.imgs || [],
     views: dbAd.views,
     featured: dbAd.featured,
+    urgent: dbAd.urgent || false,
     date: dbAd.created_at
   };
 }
@@ -311,6 +313,15 @@ function renderAds() {
     return;
   }
 
+  if (currentView === 'map') {
+    const loadMoreWrap = document.getElementById('loadMoreWrap');
+    if (loadMoreWrap) loadMoreWrap.style.display = 'none';
+    grid.className = '';
+    grid.innerHTML = '<div id="homepageMap"></div>';
+    setTimeout(() => initHomepageMap(filtered), 50);
+    return;
+  }
+
   if (currentView === 'grid') {
     grid.className = 'ads-grid';
     grid.innerHTML = visible.map(ad => renderAdCard(ad)).join('');
@@ -330,6 +341,7 @@ function renderAds() {
 function renderAdCard(ad) {
   const isFav = favorites.includes(ad.id);
   const img = ad.imgs?.[0] || '';
+  const hasPriceDrop = ad.old_price && ad.old_price > ad.price;
   return `
     <div class="ad-card ${ad.urgent ? 'ad-card-urgent' : ''}" onclick="openAdDetail(${ad.id})">
       <div class="ad-img-wrap">
@@ -340,11 +352,14 @@ function renderAdCard(ad) {
         <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFav(${ad.id})" title="${isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </button>
-        ${ad.urgent ? `<span class="ad-badge ad-badge-urgent">🔥 Acil</span>` : (ad.condition ? `<span class="ad-badge ${ad.condition}">${ad.condition === 'sıfır' ? 'Sıfır' : '2. El'}</span>` : '')}
+        ${ad.urgent ? `<span class="ad-badge ad-badge-urgent">🔥 Acil</span>` : (hasPriceDrop ? `<span class="ad-badge ad-badge-pricedrop">📉 İndirim</span>` : (ad.condition ? `<span class="ad-badge ${ad.condition}">${ad.condition === 'sıfır' ? 'Sıfır' : '2. El'}</span>` : ''))}
         ${ad.featured ? `<span class="ad-badge ad-badge-featured">⭐ Öne Çıkan</span>` : ''}
       </div>
       <div class="ad-body">
-        <div class="ad-price">${formatPrice(ad.price)}</div>
+        <div class="ad-price-row">
+          <div class="ad-price">${formatPrice(ad.price)}</div>
+          ${hasPriceDrop ? `<div class="ad-old-price">${formatPrice(ad.old_price)}</div>` : ''}
+        </div>
         <div class="ad-title">${escHtml(ad.title)}</div>
         <div class="ad-meta">
           <span>📍 ${escHtml(ad.city)}${ad.district ? ' / ' + escHtml(ad.district) : ''}</span>
@@ -360,13 +375,21 @@ function renderAdCard(ad) {
 function renderAdCardList(ad) {
   const isFav = favorites.includes(ad.id);
   const img = ad.imgs?.[0] || '';
+  const hasPriceDrop = ad.old_price && ad.old_price > ad.price;
   return `
     <div class="ad-list-item" onclick="openAdDetail(${ad.id})">
       ${img ? `<img class="ad-list-img" src="${img}" alt="" loading="lazy">` : '<div class="ad-list-img" style="background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:12px;">Fotoğraf Yok</div>'}
       <div class="ad-list-info">
-        <div class="ad-list-title">${escHtml(ad.title)}</div>
-        <div class="ad-list-price">${formatPrice(ad.price)}</div>
-        <div class="ad-list-meta">📍 ${escHtml(ad.city)} • ${escHtml(ad.category)} • ${formatDate(ad.date)}</div>
+        <div class="ad-list-title">
+          ${ad.urgent ? '<span style="color:#ef4444;font-weight:700;">🔥 [ACİL]</span> ' : ''}
+          ${hasPriceDrop ? '<span style="color:#10b981;font-weight:700;">📉 [İNDİRİM]</span> ' : ''}
+          ${escHtml(ad.title)}
+        </div>
+        <div class="ad-price-row" style="margin-bottom:0;">
+          <div class="ad-list-price">${formatPrice(ad.price)}</div>
+          ${hasPriceDrop ? `<div class="ad-old-price" style="font-size:12px;">${formatPrice(ad.old_price)}</div>` : ''}
+        </div>
+        <div class="ad-list-meta">📍 ${escHtml(ad.city)} • ${escHtml(ad.category)} • 👁 ${ad.views||0} • ${formatDate(ad.date)}</div>
       </div>
       <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFav(${ad.id})">
         <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
@@ -381,9 +404,20 @@ function loadMore() {
 
 function setView(v) {
   currentView = v;
-  document.getElementById('viewGrid').classList.toggle('active', v === 'grid');
-  document.getElementById('viewList').classList.toggle('active', v === 'list');
+  document.getElementById('gridViewBtn')?.classList.toggle('active', v === 'grid');
+  document.getElementById('listViewBtn')?.classList.toggle('active', v === 'list');
+  document.getElementById('mapViewBtn')?.classList.toggle('active', v === 'map');
   renderAds();
+}
+
+function setQuickPrice(min, max) {
+  filterState.minPrice = min;
+  filterState.maxPrice = max;
+  const minEl = document.getElementById('minPrice');
+  const maxEl = document.getElementById('maxPrice');
+  if (minEl) minEl.value = min || '';
+  if (maxEl) maxEl.value = max || '';
+  applyFilters();
 }
 
 function setSort(v) {
@@ -448,24 +482,35 @@ async function openAdDetail(id) {
   const sellerOtherAds = ads.filter(a => a.seller === ad.seller && a.id !== id).slice(0, 4);
 
   const imgs = ad.imgs?.length ? ad.imgs : [''];
+  const hasPriceDrop = ad.old_price && ad.old_price > ad.price;
+  const discountPct = hasPriceDrop ? Math.round((1 - ad.price / ad.old_price) * 100) : 0;
+
   const el = document.getElementById('adDetailContent');
   el.innerHTML = `
     <div class="ad-detail-modal">
       <div class="ad-detail-imgs">
-        <div class="ad-detail-main-img-wrap">
+        <div class="ad-detail-main-img-wrap" onclick="openLightbox(${ad.id}, 0)" style="cursor:zoom-in;position:relative;" title="Tam ekran büyütmek için tıkla">
           <img id="mainDetailImg" src="${imgs[0]}" alt="${escHtml(ad.title)}" onerror="this.style.display='none'">
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;display:flex;align-items:center;gap:4px;">🔍 Büyüt</div>
         </div>
-        ${imgs.length > 1 ? `<div class="ad-detail-thumbs">${imgs.map((img, i) => `<img src="${img}" class="ad-detail-thumb ${i===0?'active':''}" onclick="document.getElementById('mainDetailImg').src='${img}'; document.querySelectorAll('.ad-detail-thumb').forEach((t,ti)=>t.classList.toggle('active',ti===${i}))" alt="">`).join('')}</div>` : ''}
+        ${imgs.length > 1 ? `<div class="ad-detail-thumbs">${imgs.map((img, i) => `<img src="${img}" class="ad-detail-thumb ${i===0?'active':''}" onclick="document.getElementById('mainDetailImg').src='${img}'; document.querySelectorAll('.ad-detail-thumb').forEach((t,ti)=>t.classList.toggle('active',ti===${i}))" ondblclick="openLightbox(${ad.id}, ${i})" alt="">`).join('')}</div>` : ''}
       </div>
       <div class="ad-detail-info">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
           <div>
+            ${ad.urgent ? '<span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-right:6px;">🔥 ACİL SATILIK</span>' : ''}
             ${ad.featured ? '<span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">⭐ ÖNE ÇIKAN</span>' : ''}
             <h2 class="ad-detail-title" style="margin-top:4px;">${escHtml(ad.title)}</h2>
           </div>
-          <button onclick="openShare(${ad.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;flex-shrink:0;">🔗 Paylaş</button>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button onclick="openShare(${ad.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;">🔗 Paylaş</button>
+            <button onclick="openReportModal(${ad.id})" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--gray3);" title="İlanı Bildir">🚩 Şikayet</button>
+          </div>
         </div>
-        <div class="ad-detail-price">${formatPrice(ad.price)}</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">
+          <div class="ad-detail-price" style="margin-bottom:0;">${formatPrice(ad.price)}</div>
+          ${hasPriceDrop ? `<div class="ad-old-price" style="font-size:16px;">${formatPrice(ad.old_price)}</div><span class="price-drop-badge">📉 %${discountPct} İndirim</span>` : ''}
+        </div>
         <div class="ad-detail-meta-grid">
           <div><span>📍 Konum</span><strong>${escHtml(ad.city)}${ad.district ? ' / ' + escHtml(ad.district) : ''}</strong></div>
           <div><span>📁 Kategori</span><strong>${escHtml(ad.category)}${ad.subcategory ? ' > ' + escHtml(ad.subcategory) : ''}</strong></div>
@@ -528,48 +573,121 @@ async function openAdDetail(id) {
   setTimeout(() => loadMap(ad.city, ad.district), 300);
 }
 
-// ========================= MAP =========================
+// ========================= MAP & GEOLOCATION =========================
+const TURKEY_CITY_COORDS = {
+  'İstanbul': [41.015, 28.979], 'Ankara': [39.920, 32.854], 'İzmir': [38.419, 27.129],
+  'Bursa': [40.183, 29.066], 'Antalya': [36.897, 30.713], 'Adana': [37.000, 35.321],
+  'Konya': [37.871, 32.485], 'Gaziantep': [37.066, 37.383], 'Trabzon': [41.005, 39.727],
+  'Kayseri': [38.732, 35.487], 'Diyarbakır': [37.914, 40.230], 'Mersin': [36.812, 34.641],
+  'Eskişehir': [39.776, 30.520], 'Samsun': [41.286, 36.330], 'Erzurum': [39.905, 41.270]
+};
+
 function loadMap(city, district) {
   const mapEl = document.getElementById('adMap');
   if (!mapEl) return;
 
-  // If Leaflet not loaded, load it
-  if (!window.L) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => showMap(mapEl, city, district);
-    document.head.appendChild(script);
-  } else {
+  if (window.L) {
     showMap(mapEl, city, district);
+  } else {
+    setTimeout(() => { if (window.L) showMap(mapEl, city, district); }, 300);
   }
 }
 
 function showMap(mapEl, city, district) {
-  // Turkey city coordinates lookup
-  const cityCoords = {
-    'İstanbul': [41.015, 28.979], 'Ankara': [39.920, 32.854], 'İzmir': [38.419, 27.129],
-    'Bursa': [40.183, 29.066], 'Antalya': [36.897, 30.713], 'Adana': [37.000, 35.321],
-    'Konya': [37.871, 32.485], 'Gaziantep': [37.066, 37.383], 'Trabzon': [41.005, 39.727],
-    'Kayseri': [38.732, 35.487], 'Diyarbakır': [37.914, 40.230], 'Mersin': [36.812, 34.641],
-    'Eskişehir': [39.776, 30.520], 'Samsun': [41.286, 36.330], 'Erzurum': [39.905, 41.270]
-  };
-  const coords = cityCoords[city] || [39.000, 35.000];
-
+  const coords = TURKEY_CITY_COORDS[city] || [39.000, 35.000];
   if (mapEl._leaflet_id) {
     mapEl._leaflet_id = null;
     mapEl.innerHTML = '';
   }
-
   const map = window.L.map(mapEl).setView(coords, city ? 12 : 6);
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
   }).addTo(map);
   window.L.marker(coords).addTo(map)
     .bindPopup(`<b>${city}${district ? ' / ' + district : ''}</b>`).openPopup();
+}
+
+let homepageMapInstance = null;
+function initHomepageMap(filteredAds) {
+  const mapEl = document.getElementById('homepageMap');
+  if (!mapEl || !window.L) return;
+
+  if (mapEl._leaflet_id) {
+    mapEl._leaflet_id = null;
+    mapEl.innerHTML = '';
+  }
+
+  homepageMapInstance = window.L.map(mapEl).setView([39.0, 35.2], 6);
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(homepageMapInstance);
+
+  filteredAds.forEach(ad => {
+    const baseCoords = TURKEY_CITY_COORDS[ad.city] || [39.000, 35.000];
+    const jitterLat = (Math.random() - 0.5) * 0.04;
+    const jitterLng = (Math.random() - 0.5) * 0.04;
+    const pos = [baseCoords[0] + jitterLat, baseCoords[1] + jitterLng];
+
+    const marker = window.L.circleMarker(pos, {
+      radius: 9,
+      fillColor: ad.urgent ? '#ef4444' : (ad.featured ? '#f59e0b' : '#6366f1'),
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.95
+    }).addTo(homepageMapInstance);
+
+    const popupHtml = `
+      <div class="map-popup-card">
+        ${ad.imgs?.[0] ? `<img src="${ad.imgs[0]}" class="map-popup-img" alt="">` : ''}
+        <div class="map-popup-title">${escHtml(ad.title)}</div>
+        <div class="map-popup-price">${formatPrice(ad.price)}</div>
+        <button class="map-popup-btn" onclick="openAdDetail(${ad.id})">İlanı İncele →</button>
+      </div>
+    `;
+    marker.bindPopup(popupHtml);
+  });
+}
+
+function findNearestAds() {
+  if (!navigator.geolocation) {
+    showToast('Tarayıcınız konum özelliğini desteklemiyor.', 'error');
+    return;
+  }
+  showToast('📍 Konumunuz alınıyor...', 'info');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    let nearestCity = '';
+    let minDist = Infinity;
+    for (const [c, coords] of Object.entries(TURKEY_CITY_COORDS)) {
+      const dist = Math.hypot(lat - coords[0], lng - coords[1]);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestCity = c;
+      }
+    }
+    if (nearestCity) {
+      filterState.city = nearestCity;
+      const hdrCity = document.getElementById('hdrCity');
+      const filterCity = document.getElementById('filterCity');
+      if (hdrCity) hdrCity.value = nearestCity;
+      if (filterCity) filterCity.value = nearestCity;
+      applyFilters();
+      showToast(`📍 Size en yakın il seçildi: ${nearestCity}`, 'success');
+    }
+  }, (err) => {
+    showToast('Konum erişimi reddedildi veya alınamadı.', 'error');
+  });
+}
+
+function focusSearch() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const sInput = document.getElementById('searchInput');
+  if (sInput) {
+    sInput.focus();
+    sInput.select();
+  }
 }
 
 // ========================= RATING =========================
@@ -789,26 +907,66 @@ function hasBadWords(text) {
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_IMAGE_SIZE_MB = 5;
 
-function handlePhotoUpload(event) {
+// EXIF/GPS verisi temizleme ve istemci tarafı görsel sıkıştırma
+async function compressAndStripExif(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1600;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(file); return; }
+          const cleanFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' });
+          resolve(cleanFile);
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoUpload(event) {
   const files = Array.from(event.target.files);
-  files.forEach(file => {
-    if (tempPhotos.length >= 8) { showToast('En fazla 8 fotoğraf ekleyebilirsiniz', 'error'); return; }
+  for (const file of files) {
+    if (tempPhotos.length >= 8) { showToast('En fazla 8 fotoğraf ekleyebilirsiniz', 'error'); break; }
 
     // Tür kontrolü
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       showToast(`"${file.name}" desteklenmiyor. Sadece JPG, PNG, WEBP, GIF yükleyebilirsiniz.`, 'error');
-      return;
+      continue;
     }
 
     // Boyut kontrolü (5 MB)
     if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
       showToast(`"${file.name}" çok büyük (maks ${MAX_IMAGE_SIZE_MB} MB).`, 'error');
-      return;
+      continue;
     }
 
-    tempPhotos.push({ url: URL.createObjectURL(file), file: file });
+    // EXIF/GPS temizle ve sıkıştır
+    const cleanFile = await compressAndStripExif(file);
+    tempPhotos.push({ url: URL.createObjectURL(cleanFile), file: cleanFile });
     renderPhotoSlots();
-  });
+  }
   event.target.value = '';
 }
 
@@ -929,13 +1087,34 @@ async function saveAd() {
     let sbError = null;
 
     if (editId) {
-      const { error } = await getSupabase().from('ads').update({
+      const existingAd = ads.find(a => a.id === +editId);
+      const updateData = {
         title, price, city, district, category, subcategory, description: desc,
         phone: phone || null, wa: wa || null, condition,
         imgs: finalPhotos.length ? finalPhotos : undefined
-      }).eq('id', editId);
+      };
+      if (existingAd && existingAd.price > price) {
+        updateData.old_price = existingAd.price;
+      }
+      const { error } = await getSupabase().from('ads').update(updateData).eq('id', editId);
       sbError = error;
-      if (!error) showToast('İlan güncellendi!', 'success');
+      if (!error) {
+        if (existingAd) {
+          if (existingAd.price > price) existingAd.old_price = existingAd.price;
+          existingAd.price = price;
+          existingAd.title = title;
+          existingAd.city = city;
+          existingAd.district = district;
+          existingAd.category = category;
+          existingAd.subcategory = subcategory;
+          existingAd.desc = desc;
+          existingAd.phone = phone || null;
+          existingAd.wa = wa || null;
+          existingAd.condition = condition;
+          if (finalPhotos.length) existingAd.imgs = finalPhotos;
+        }
+        showToast('İlan güncellendi!', 'success');
+      }
     } else {
       const { error } = await getSupabase().from('ads').insert({
         title, price, city, district, category, subcategory, description: desc,
@@ -1336,6 +1515,7 @@ function renderDash() {
         <button class="dash-tab${activeDashTab==='myads'?' active':''}" onclick="setDashTab('myads')">İlanlarım</button>
         <button class="dash-tab${activeDashTab==='favs'?' active':''}" onclick="setDashTab('favs')">Favorilerim</button>
         ${currentUser.isAdmin ? `<button class="dash-tab${activeDashTab==='admin'?' active':''}" onclick="setDashTab('admin')">Admin Panel</button>` : ''}
+        ${currentUser.isAdmin ? `<button class="dash-tab${activeDashTab==='reports'?' active':''}" onclick="setDashTab('reports')">🚩 Şikayetler</button>` : ''}
       </div>
       <div id="dashTabContent"></div>
     </div>
@@ -1462,6 +1642,45 @@ function renderDashTab() {
             </div>
           </div>
         `).join('')}</div>
+      </div>
+    `;
+  } else if (activeDashTab === 'reports' && currentUser.isAdmin) {
+    let reports = [];
+    try {
+      reports = JSON.parse(localStorage.getItem('vt_reports') || '[]');
+    } catch(e) {}
+
+    if (reports.length === 0) {
+      el.innerHTML = `
+        <div class="empty-state" style="padding:40px;">
+          <div style="font-size:36px;margin-bottom:8px;">✅</div>
+          <h3>Bekleyen şikayet yok</h3>
+          <p>Tüm ilanlar ve kullanıcılar kurallara uygun görünüyor.</p>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = `
+      <div style="margin-top:16px;">
+        <h3 style="margin-bottom:12px;font-size:16px;">🚩 İnceleme Bekleyen Şikayetler (${reports.length})</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          ${reports.map(r => `
+            <div style="background:var(--gray6);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--error);margin-bottom:2px;">[${escHtml(r.reason)}]</div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${escHtml(r.ad_title || 'İlan')}</div>
+                <div style="font-size:12px;color:var(--gray3);">Bildiren: ${escHtml(r.reporter_email || 'Anonim')} • Satıcı: ${escHtml(r.seller_email || '?')} • ${formatDate(r.created_at)}</div>
+                ${r.details ? `<div style="font-size:12px;color:var(--gray2);margin-top:4px;font-style:italic;">"${escHtml(r.details)}"</div>` : ''}
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="btn-edit-ad" onclick="closeModal('dashOv');openAdDetail(${r.ad_id})">İlanı Gör</button>
+                <button class="btn-del-ad" onclick="deleteReportedAd(${r.ad_id}, ${r.id})">İlanı Sil</button>
+                <button class="btn-edit-ad" style="background:#e2e8f0;color:#334155;" onclick="dismissReport(${r.id})">Kapat</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
   }
@@ -1639,7 +1858,7 @@ async function sendChatMsg() {
   openConv(currentConvId);
 }
 
-// ========================= SHARE =========================
+// ========================= SHARE & STORY GENERATOR =========================
 function openShare(id) {
   const ad = ads.find(a => a.id === id);
   if (!ad) return;
@@ -1652,12 +1871,342 @@ function openShare(id) {
         <button class="share-btn share-wa" onclick="window.open('https://wa.me/?text=${encodeURIComponent(ad.title + ' - ' + url)}','_blank')">📱 WhatsApp</button>
         <button class="share-btn share-copy" onclick="copyToClipboard('${escHtml(url)}')">📋 Linki Kopyala</button>
         <button class="share-btn share-twitter" onclick="window.open('https://twitter.com/intent/tweet?text=${encodeURIComponent(ad.title)}&url=${encodeURIComponent(url)}','_blank')">🐦 Twitter</button>
+        <button class="share-btn" style="background:var(--brand-gradient);color:#fff;grid-column:1/-1;padding:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="generateAdStoryCanvas(${ad.id})">
+          <span>📸 Instagram / WhatsApp Afişi İndir</span>
+        </button>
       </div>
-      <button onclick="closeModal('shareOv')" style="width:100%;margin-top:16px;padding:10px;background:var(--gray6);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;">Kapat</button>
+      <button onclick="closeModal('shareOv')" style="width:100%;margin-top:16px;padding:10px;background:var(--gray6);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;">Kapat</button>
     </div>
   `;
   closeModal('adDetailOv');
   openModal('shareOv');
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard?.writeText(text)
+    .then(() => showToast('Link kopyalandı! 📋', 'success'))
+    .catch(() => showToast('Kopyalanamadı', 'error'));
+}
+
+async function generateAdStoryCanvas(adId) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad) return;
+  showToast('🎨 Hikaye afişi hazırlanıyor...', 'info');
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+
+  // Arka plan: Zengin lacivert gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, 1920);
+  bgGrad.addColorStop(0, '#0f172a');
+  bgGrad.addColorStop(0.5, '#1e1b4b');
+  bgGrad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1080, 1920);
+
+  // Üst Turuncu Glow Orb
+  const glow = ctx.createRadialGradient(540, 220, 50, 540, 220, 650);
+  glow.addColorStop(0, 'rgba(247, 127, 0, 0.28)');
+  glow.addColorStop(1, 'rgba(247, 127, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 1080, 900);
+
+  // Logo & Başlık
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f77f00';
+  ctx.font = 'bold 70px Inter, sans-serif';
+  ctx.fillText('vitrinim', 540, 160);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = '500 28px Inter, sans-serif';
+  ctx.fillText("TÜRKİYE'NİN İLAN PLATFORMU", 540, 215);
+
+  const photoW = 900;
+  const photoH = 800;
+  const photoX = 90;
+  const photoY = 280;
+
+  const drawCardContent = (imgObj) => {
+    // Fotoğraf kartı çerçevesi & gölgesi
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 20;
+
+    // Fotoğrafı yuvarlatılmış köşeyle çiz
+    ctx.beginPath();
+    ctx.roundRect(photoX, photoY, photoW, photoH, 32);
+    ctx.clip();
+
+    if (imgObj) {
+      ctx.drawImage(imgObj, photoX, photoY, photoW, photoH);
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(photoX, photoY, photoW, photoH);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '100px Inter, sans-serif';
+      ctx.fillText('📷', 540, photoY + photoH / 2);
+    }
+    ctx.restore();
+
+    // Fiyat Rozeti (Büyük ve Parlak)
+    const priceY = 1170;
+    ctx.save();
+    ctx.shadowColor = 'rgba(247, 127, 0, 0.45)';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#f77f00';
+    ctx.beginPath();
+    ctx.roundRect(140, priceY, 800, 110, 24);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 58px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(formatPrice(ad.price), 540, priceY + 75);
+
+    // İlan Başlığı (2 Satıra kadar otomatik bölme)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 46px Inter, sans-serif';
+    const words = ad.title.split(' ');
+    let line1 = '';
+    let line2 = '';
+    for (const w of words) {
+      if ((line1 + w).length < 24) line1 += (line1 ? ' ' : '') + w;
+      else line2 += (line2 ? ' ' : '') + w;
+    }
+    ctx.fillText(line1, 540, 1370);
+    if (line2) ctx.fillText(line2, 540, 1435);
+
+    // Kategori & Konum Bilgisi
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '600 34px Inter, sans-serif';
+    ctx.fillText(`📍 ${ad.city}${ad.district ? ' / ' + ad.district : ''}  •  📁 ${ad.category}`, 540, 1540);
+
+    // Durum / Acil Rozeti
+    if (ad.urgent) {
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.roundRect(390, 1600, 300, 60, 16);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px Inter, sans-serif';
+      ctx.fillText('🔥 ACİL SATILIK', 540, 1642);
+    }
+
+    // Alt Filigran & Çağrı
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = '500 30px Inter, sans-serif';
+    ctx.fillText('Detaylar için web sitesini ziyaret edin:', 540, 1780);
+    ctx.fillStyle = '#f77f00';
+    ctx.font = 'bold 36px Inter, sans-serif';
+    ctx.fillText('vitrinim.com', 540, 1830);
+
+    // İndir veya Paylaş
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `vitrinim-ilan-${ad.id}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: ad.title,
+          text: `${ad.title} - ${formatPrice(ad.price)} Vitrinim'de!`
+        }).catch(() => {});
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `vitrinim-ilan-${ad.id}.png`;
+        a.click();
+      }
+      showToast('📸 Hikaye afişiniz indirildi!', 'success');
+    }, 'image/png');
+  };
+
+  const imgUrl = ad.imgs?.[0];
+  if (imgUrl) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => drawCardContent(img);
+    img.onerror = () => drawCardContent(null);
+    img.src = imgUrl;
+  } else {
+    drawCardContent(null);
+  }
+}
+
+// ========================= LIGHTBOX GALLERY =========================
+let lightboxAd = null;
+let lightboxCurrentIndex = 0;
+
+function openLightbox(adId, initialIndex = 0) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad || !ad.imgs?.length) return;
+  lightboxAd = ad;
+  lightboxCurrentIndex = initialIndex || 0;
+  updateLightbox();
+  const ov = document.getElementById('lightboxOv');
+  if (ov) ov.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function updateLightbox() {
+  if (!lightboxAd || !lightboxAd.imgs?.length) return;
+  const imgs = lightboxAd.imgs;
+  const imgEl = document.getElementById('lightboxImg');
+  const counterEl = document.getElementById('lightboxCounter');
+  const thumbsEl = document.getElementById('lightboxThumbs');
+
+  if (imgEl) imgEl.src = imgs[lightboxCurrentIndex];
+  if (counterEl) counterEl.textContent = `${lightboxCurrentIndex + 1} / ${imgs.length}`;
+
+  if (thumbsEl) {
+    thumbsEl.innerHTML = imgs.map((img, i) => `
+      <img src="${img}" class="lightbox-thumb ${i === lightboxCurrentIndex ? 'active' : ''}" onclick="lightboxGoTo(${i})" alt="">
+    `).join('');
+  }
+}
+
+function lightboxGoTo(idx) {
+  if (!lightboxAd || !lightboxAd.imgs?.length) return;
+  lightboxCurrentIndex = idx;
+  updateLightbox();
+}
+
+function lightboxNext() {
+  if (!lightboxAd || !lightboxAd.imgs?.length) return;
+  lightboxCurrentIndex = (lightboxCurrentIndex + 1) % lightboxAd.imgs.length;
+  updateLightbox();
+}
+
+function lightboxPrev() {
+  if (!lightboxAd || !lightboxAd.imgs?.length) return;
+  lightboxCurrentIndex = (lightboxCurrentIndex - 1 + lightboxAd.imgs.length) % lightboxAd.imgs.length;
+  updateLightbox();
+}
+
+function closeLightbox() {
+  const ov = document.getElementById('lightboxOv');
+  if (ov) ov.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function handleLightboxClick(e) {
+  if (e.target.id === 'lightboxOv' || e.target.classList.contains('lightbox-stage')) {
+    closeLightbox();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  const ov = document.getElementById('lightboxOv');
+  if (!ov || !ov.classList.contains('active')) return;
+  if (e.key === 'Escape') closeLightbox();
+  else if (e.key === 'ArrowRight') lightboxNext();
+  else if (e.key === 'ArrowLeft') lightboxPrev();
+});
+
+// ========================= REPORT SYSTEM =========================
+function openReportModal(adId) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad) return;
+  const content = document.getElementById('reportContent');
+  if (!content) return;
+
+  content.innerHTML = `
+    <div class="report-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3>🚩 İlanı Bildir / Şikayet Et</h3>
+        <button onclick="closeModal('reportModalOv')" style="background:none;border:none;font-size:22px;color:var(--gray3);cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:13px;color:var(--gray3);margin-bottom:16px;">
+        "${escHtml(ad.title)}" başlıklı ilanla ilgili şikayetinizi incelememiz için lütfen bir neden seçin:
+      </p>
+      <form id="reportForm" onsubmit="event.preventDefault(); submitReport(${ad.id});">
+        <div class="report-reasons">
+          <label class="report-reason-item">
+            <input type="radio" name="reportReason" value="Yanıltıcı / Gerçek Dışı Fiyat" checked>
+            <span>Yanıltıcı / Gerçek Dışı Fiyat</span>
+          </label>
+          <label class="report-reason-item">
+            <input type="radio" name="reportReason" value="Dolandırıcılık Şüphesi">
+            <span>Dolandırıcılık Şüphesi</span>
+          </label>
+          <label class="report-reason-item">
+            <input type="radio" name="reportReason" value="Hakaret, Küfür veya Uygunsuz İçerik">
+            <span>Hakaret, Küfür veya Uygunsuz İçerik</span>
+          </label>
+          <label class="report-reason-item">
+            <input type="radio" name="reportReason" value="Satılmış / İlan Sahibine Ulaşılamıyor">
+            <span>Satılmış / İlan Sahibine Ulaşılamıyor</span>
+          </label>
+          <label class="report-reason-item">
+            <input type="radio" name="reportReason" value="Diğer">
+            <span>Diğer</span>
+          </label>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="font-size:12px;font-weight:700;color:var(--gray2);display:block;margin-bottom:6px;">Açıklama (opsiyonel)</label>
+          <textarea id="reportDetails" placeholder="Şikayetinizle ilgili ek detay verin..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;font-family:inherit;min-height:70px;"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" style="flex:1;background:var(--error);color:#fff;border:none;border-radius:var(--radius);padding:12px;font-weight:700;font-size:14px;cursor:pointer;">Şikayeti İlet</button>
+          <button type="button" onclick="closeModal('reportModalOv')" style="background:var(--gray6);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;font-weight:600;font-size:14px;cursor:pointer;">İptal</button>
+        </div>
+      </form>
+    </div>
+  `;
+  openModal('reportModalOv');
+}
+
+async function submitReport(adId) {
+  const ad = ads.find(a => a.id === adId);
+  if (!ad) return;
+  const reason = document.querySelector('input[name="reportReason"]:checked')?.value || 'Belirtilmedi';
+  const details = document.getElementById('reportDetails')?.value?.trim() || '';
+  const reporter = currentUser ? currentUser.email : 'anonim@ziyaretci.com';
+
+  const reportData = {
+    id: Date.now(),
+    ad_id: adId,
+    ad_title: ad.title,
+    seller_email: ad.seller,
+    reason,
+    details,
+    reporter_email: reporter,
+    created_at: new Date().toISOString()
+  };
+
+  // Local mirror
+  try {
+    const existing = JSON.parse(localStorage.getItem('vt_reports') || '[]');
+    existing.unshift(reportData);
+    localStorage.setItem('vt_reports', JSON.stringify(existing));
+  } catch(e) {}
+
+  // Attempt Supabase insert
+  try {
+    await getSupabase().from('reports').insert(reportData);
+  } catch(e) {}
+
+  closeModal('reportModalOv');
+  showToast('Şikayetiniz moderasyon ekibimize iletildi. Teşekkür ederiz! 🛡️', 'success');
+}
+
+function dismissReport(repId) {
+  try {
+    let reports = JSON.parse(localStorage.getItem('vt_reports') || '[]');
+    reports = reports.filter(r => r.id !== repId);
+    localStorage.setItem('vt_reports', JSON.stringify(reports));
+  } catch(e) {}
+  renderDash();
+  showToast('Şikayet kapatıldı.', 'info');
+}
+
+async function deleteReportedAd(adId, repId) {
+  if (!confirm('Bu ilanı şikayet gerekçesiyle silmek istediğinize emin misiniz?')) return;
+  await deleteAd(adId);
+  dismissReport(repId);
 }
 
 function copyToClipboard(text) {

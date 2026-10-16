@@ -1212,5 +1212,386 @@ img { max-width: 100%; display: block; }
   transform: translate(-50%, -50%); font-size: 32px; opacity: 0.4;
 }
 
+/* ========== NEAR ME BUTTON ========== */
+.btn-near-me {
+  background: var(--gray6);
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 8px 12px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-near-me:hover {
+  background: var(--brand-glow);
+}
+.btn-near-me svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+/* ========== QUICK PRICE CHIPS ========== */
+.quick-price-chips {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.qp-chip {
+  background: var(--gray6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray2);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.qp-chip:hover, .qp-chip.active {
+  background: var(--brand-glow);
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+/* ========== PRICE DROP BADGE & STYLES ========== */
+.ad-badge-pricedrop {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #fff !important;
+  left: 8px !important;
+  top: 8px !important;
+}
+.ad-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.ad-old-price {
+  font-size: 13px;
+  color: var(--gray3);
+  text-decoration: line-through;
+  font-weight: 500;
+}
+.price-drop-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+[data-theme="dark"] .price-drop-badge {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+/* ========== HEARTBEAT FAVORITE ANIMATION ========== */
+.fav-btn.active svg {
+  animation: heartPulse 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes heartPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* ========== HOMEPAGE MAP ========== */
+#homepageMap {
+  width: 100%;
+  height: 560px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  z-index: 10;
+}
+.map-popup-card {
+  width: 220px;
+  font-family: 'Inter', sans-serif;
+}
+.map-popup-img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.map-popup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.map-popup-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brand);
+  margin-bottom: 8px;
+}
+.map-popup-btn {
+  display: block;
+  text-align: center;
+  background: var(--brand);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+/* ========== LIGHTBOX OVERLAY ========== */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-out;
+}
+.lightbox-overlay.active {
+  display: flex;
+}
+.lightbox-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10001;
+}
+.lightbox-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10001;
+  user-select: none;
+}
+.lightbox-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-50%) scale(1.1);
+}
+.lightbox-nav-btn.prev { left: 24px; }
+.lightbox-nav-btn.next { right: 24px; }
+.lightbox-stage {
+  max-width: 85vw;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.lightbox-stage img {
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  user-select: none;
+}
+.lightbox-counter {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.lightbox-thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  max-width: 90vw;
+  overflow-x: auto;
+  padding: 8px;
+}
+.lightbox-thumb {
+  width: 60px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 4px;
+  opacity: 0.5;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.lightbox-thumb.active, .lightbox-thumb:hover {
+  opacity: 1;
+  border-color: var(--brand);
+  transform: scale(1.08);
+}
+
+/* ========== MOBILE BOTTOM NAVIGATION BAR ========== */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  padding: 6px 12px 10px;
+  z-index: 450;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+}
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.94);
+  }
+  [data-theme="dark"] .mobile-bottom-nav {
+    background: rgba(15, 23, 42, 0.94);
+  }
+  body {
+    padding-bottom: 68px;
+  }
+  .site-footer {
+    margin-bottom: 20px;
+  }
+}
+.mb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--gray3);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+.mb-item.active, .mb-item:hover {
+  color: var(--brand);
+}
+.mb-item svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+.mb-post {
+  margin-top: -18px;
+}
+.mb-post-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--brand-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(247, 127, 0, 0.45);
+  transition: transform 0.2s;
+}
+.mb-post:hover .mb-post-btn {
+  transform: scale(1.08);
+}
+.mb-post-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+.mb-badge {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  background: var(--error);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+}
+
+/* ========== REPORT SYSTEM STYLES ========== */
+.report-modal {
+  padding: 24px;
+}
+.report-modal h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: var(--gray1);
+}
+.report-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+.report-reason-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--gray2);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.report-reason-item:hover {
+  background: var(--gray6);
+}
+.report-reason-item input[type="radio"] {
+  accent-color: var(--brand);
+}
+
 
 
